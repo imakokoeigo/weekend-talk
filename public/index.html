@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weekend Talk</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                   'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    .hdr {
+      background: white;
+      padding: 13px 18px;
+      border-bottom: 1px solid #eaeaea;
+      position: sticky; top: 0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .hdr-title { font-size: 16px; font-weight: 800; color: #222; }
+    .hdr-sub   { font-size: 11px; color: #bbb; margin-top: 1px; }
+
+    .dots { display: flex; gap: 7px; align-items: center; }
+    .dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #e0e0e0;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .dot.done   { background: #c8c8c8; }
+    .dot.active { background: var(--sc); transform: scale(1.35); }
+
+    /* ── CHAT ── */
+    .chat {
+      max-width: 620px; margin: 0 auto;
+      padding: 18px 14px 80px;
+    }
+
+    /* ── BUBBLES ── */
+    .msg { display: flex; margin-bottom: 12px; align-items: flex-end; gap: 8px; }
+    .msg.bot  { flex-direction: row; }
+    .msg.user { flex-direction: row-reverse; }
+
+    .avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: #667eea;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+    }
+    .bubble {
+      max-width: 78%; padding: 9px 13px; border-radius: 18px;
+      font-size: 14.5px; line-height: 1.6;
+    }
+    .bubble.bot {
+      background: white; color: #333;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .bubble.user {
+      background: var(--sc, #4A90D9); color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .bubble .hint { font-size: 11.5px; color: #aaa; margin-top: 3px; }
+
+    /* ── TYPING ── */
+    .typing-wrap { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+    .typing-dots {
+      background: white; border-radius: 18px; padding: 11px 15px;
+      display: flex; gap: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .typing-dots span {
+      width: 6px; height: 6px; background: #bbb; border-radius: 50%;
+      animation: tdot 1.2s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: .2s; }
+    .typing-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes tdot {
+      0%,60%,100% { transform: translateY(0); }
+      30%          { transform: translateY(-5px); }
+    }
+
+    /* ── INPUT CARD ── */
+    .q-input {
+      margin-left: 38px; margin-bottom: 20px;
+      background: white; border-radius: 14px; padding: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+    .chip {
+      padding: 6px 13px; border-radius: 20px;
+      border: 2px solid var(--cl, #ddd);
+      background: white; color: var(--sc, #666);
+      font-size: 13px; cursor: pointer;
+      transition: all .15s; font-family: inherit;
+    }
+    .chip:hover  { background: var(--cbg, #f5f5f5); }
+    .chip.sel    { background: var(--sc); color: white; border-color: var(--sc); }
+
+    .or-lbl { font-size: 11px; color: #bbb; margin-bottom: 5px; }
+    .inp-row { display: flex; gap: 8px; align-items: flex-end; }
+    .inp-wrap { flex: 1; }
+    .txt-inp {
+      width: 100%; padding: 9px 12px;
+      border: 2px solid #e5e5e5; border-radius: 10px;
+      font-size: 14px; font-family: inherit;
+      outline: none; transition: border-color .2s;
+      color: #333; background: white; resize: none;
+    }
+    .txt-inp:focus { border-color: var(--sc, #4A90D9); }
+    .send-btn {
+      padding: 9px 15px; border-radius: 10px;
+      background: var(--sc, #4A90D9); color: white;
+      border: none; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      white-space: nowrap; align-self: flex-end;
+      transition: opacity .15s;
+    }
+    .send-btn:disabled         { opacity: .35; cursor: not-allowed; }
+    .send-btn:not(:disabled):hover { filter: brightness(1.08); }
+
+    /* ── DRAFT SCREEN ── */
+    .draft-screen {
+      display: none; max-width: 620px; margin: 0 auto;
+      padding: 20px 14px 60px;
+    }
+    .draft-screen.show { display: block; }
+
+    .draft-title { font-size: 17px; font-weight: 800; color: #222; margin-bottom: 3px; }
+    .draft-sub   { font-size: 12px; color: #aaa; margin-bottom: 14px; }
+
+    .prep-tags { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+    .ptag {
+      padding: 4px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: .3px;
+    }
+
+    .draft-box {
+      background: white; border: 2px solid #e5e5e5; border-radius: 14px;
+      overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .dsec { display: flex; border-bottom: 1px solid #f0f0f0; }
+    .dsec:last-child { border-bottom: none; }
+    .dsec-label {
+      width: 36px; flex-shrink: 0;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding-top: 14px;
+      font-size: 12px; font-weight: 900; letter-spacing: .3px;
+    }
+    textarea.dsec-text {
+      flex: 1; padding: 12px 14px 12px 0;
+      border: none; outline: none;
+      font-size: 15px; font-family: inherit; line-height: 1.85;
+      color: #222; resize: none; background: transparent; overflow: hidden;
+    }
+
+    .draft-tip { font-size: 12px; color: #aaa; margin: 10px 0 18px; }
+
+    .draft-btns { display: flex; gap: 9px; }
+    .btn-copy, .btn-restart {
+      flex: 1; padding: 13px; border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .btn-copy    { background: white; border: 2px solid #e0e0e0; color: #555; }
+    .btn-copy:hover { border-color: #bbb; }
+    .btn-restart { background: #667eea; color: white; border: none; }
+    .btn-restart:hover { background: #5a6fd6; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: #222; color: white; padding: 9px 22px;
+      border-radius: 24px; font-size: 13px; font-weight: 600;
+      opacity: 0; transition: all .22s; pointer-events: none; z-index: 99;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 480px) {
+      .bubble { max-width: 86%; }
+      .draft-btns { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">Weekend Talk</div>
+    <div class="hdr-sub">英語スピーチ作成ツール</div>
+  </div>
+  <div class="dots" id="dots"></div>
+</div>
+
+<div class="chat" id="chat"></div>
+
+<div class="draft-screen" id="draftScreen">
+  <div class="draft-title">✨ ドラフト完成！</div>
+  <div class="draft-sub">このまま使ってもOK。自由に書き直してね 📝</div>
+  <div class="prep-tags">
+    <span class="ptag" style="background:#EBF4FF;color:#4A90D9">P Point</span>
+    <span class="ptag" style="background:#EDFAF1;color:#5BAD6F">R Reason</span>
+    <span class="ptag" style="background:#FFF8EC;color:#E8960F">E Example</span>
+    <span class="ptag" style="background:#F7F0FF;color:#9B59B6">P Conclusion</span>
+  </div>
+  <div class="draft-box" id="draftBox"></div>
+  <div class="draft-tip">💡 気に入らない表現は直接編集できます</div>
+  <div class="draft-btns">
+    <button class="btn-copy"    onclick="doCopy()">📋 コピーする</button>
+    <button class="btn-restart" onclick="restart()">🔄 やり直す</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">コピーしました！</div>
+
+<script>
+// ── QUESTIONS ────────────────────────────────────────
+// needsAI: true → chips are fetched from /api/chips after previous answer
+const Qs = [
+  {
+    id: 'adj', needsAI: false,
+    sc: '#4A90D9', cl: '#BDD8F5', cbg: '#EBF4FF',
+    bot: '週末、どんな感じでしたか？😊',
+    hint: '一言で表してみよう',
+    chips: ['relaxing','fun','busy','productive','exciting',
+            'refreshing','peaceful','enjoyable','eventful','tiring','memorable'],
+    placeholder: '例: relaxing / リラックスできた',
+    multiline: false,
+  },
+  {
+    id: 'reason', needsAI: true,
+    sc: '#5BAD6F', cl: '#A8DAAF', cbg: '#EDFAF1',
+    bot: 'なんでそう思いましたか？',
+    hint: 'AIがあなたの回答に合った選択肢を用意しました',
+    chips: [],
+    placeholder: '例: I was able to relax / 友達と過ごせたから',
+    multiline: false,
+  },
+  {
+    id: 'example1', needsAI: true,
+    sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
+    bot: '具体的に何をしましたか？✏️',
+    hint: 'いつ・どこで・誰と・何をしたか、日本語でOK！',
+    chips: [],
+    placeholder: '例：土曜日の午後、友達と渋谷でランチした',
+    multiline: true,
+  },
+  {
+    id: 'example2', needsAI: true,
+    sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
+    bot: '他には何をしましたか？',
+    hint: 'その後にしたことを教えてください',
+    chips: [],
+    placeholder: '例：夕方はカラオケに行った / 家でゆっくり映画を観た',
+    multiline: true,
+  },
+  {
+    id: 'feeling', needsAI: true,
+    sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
+    bot: 'そのときどんな感じでしたか？',
+    hint: '一言で教えてください',
+    chips: [],
+    placeholder: '例: amazing / めちゃくちゃ楽しかった',
+    multiline: false,
+  },
+  {
+    id: 'now', needsAI: true,
+    sc: '#9B59B6', cl: '#C89FD6', cbg: '#F7F0FF',
+    bot: '今の気持ちはどうですか？月曜日に向けて！',
+    hint: '今の気分を教えてください',
+    chips: [],
+    placeholder: '例: feeling refreshed / やる気満々',
+    multiline: false,
+  },
+];
+
+// ── STATE ────────────────────────────────────────────
+const answers = {};
+let curQ = 0;
+let pending = '';
+
+// ── BOOT ─────────────────────────────────────────────
+function init() {
+  buildDots();
+  chatEl().innerHTML = '';
+  botMsg('こんにちは！🎉 週末の英語スピーチを一緒に作りましょう。<br>質問に答えると、AIがあなたに合った選択肢を出してくれます！');
+  setTimeout(() => nextQ(0), 700);
+}
+
+// ── DOTS ─────────────────────────────────────────────
+function buildDots() {
+  const el = document.getElementById('dots');
+  el.innerHTML = '';
+  Qs.forEach((q, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.id = `dot${i}`;
+    d.style.setProperty('--sc', q.sc);
+    el.appendChild(d);
+  });
+  refreshDots();
+}
+
+function refreshDots() {
+  Qs.forEach((_, i) => {
+    const d = document.getElementById(`dot${i}`);
+    if (!d) return;
+    d.classList.remove('done', 'active');
+    if (i < curQ) d.classList.add('done');
+    else if (i === curQ) d.classList.add('active');
+  });
+}
+
+// ── CHAT HELPERS ─────────────────────────────────────
+function chatEl() { return document.getElementById('chat'); }
+
+function botMsg(html, hint) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot';
+  wrap.innerHTML = `
+    <div class="avatar">🤖</div>
+    <div class="bubble bot">
+      ${html}
+      ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
+    </div>`;
+  chatEl().appendChild(wrap);
+  scrollEnd();
+}
+
+function userMsg(text) {
+  const q = Qs[Math.min(curQ, Qs.length - 1)];
+  const wrap = document.createElement('div');
+  wrap.className = 'msg user';
+  wrap.style.setProperty('--sc', q.sc);
+  wrap.innerHTML = `<div class="bubble user">${esc(text)}</div>`;
+  chatEl().appendChild(wrap);
+  scrollEnd();
+}
+
+function showTyping() {
+  const el = document.createElement('div');
+  el.className = 'typing-wrap';
+  el.id = 'typing';
+  el.innerHTML = `
+    <div class="avatar">🤖</div>
+    <div class="typing-dots"><span></span><span></span><span></span></div>`;
+  chatEl().appendChild(el);
+  scrollEnd();
+  return el;
+}
+
+// ── QUESTION FLOW (async) ─────────────────────────────
+async function nextQ(idx) {
+  curQ = idx;
+  refreshDots();
+
+  const q = Qs[idx];
+  if (!q) { await generateSpeech(); return; }
+
+  // Fetch AI chips if needed
+  if (q.needsAI) {
+    const t = showTyping();
+    try {
+      const r = await fetch('/api/chips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: q.id, answers }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        q.chips = Array.isArray(data.chips) ? data.chips : [];
+      }
+    } catch {
+      q.chips = []; // network error → free input only
+    }
+    t.remove();
+    await wait(200);
+  }
+
+  const t2 = showTyping();
+  await wait(450);
+  t2.remove();
+
+  botMsg(esc(q.bot), q.needsAI && q.chips.length
+    ? 'AIがあなたの回答に合った選択肢を用意しました'
+    : q.hint);
+  appendInput(q);
+  scrollEnd();
+}
+
+// ── INPUT ─────────────────────────────────────────────
+function appendInput(q) {
+  const wrap = document.createElement('div');
+  wrap.className = 'q-input';
+  wrap.id = 'qInput';
+  wrap.style.setProperty('--sc',  q.sc);
+  wrap.style.setProperty('--cl',  q.cl);
+  wrap.style.setProperty('--cbg', q.cbg);
+
+  // chips
+  if (q.chips.length) {
+    const chipsDiv = document.createElement('div');
+    chipsDiv.className = 'chips';
+    q.chips.forEach(word => {
+      const btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.textContent = word;
+      btn.addEventListener('click', () => {
+        chipsDiv.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+        btn.classList.add('sel');
+        pending = word;
+        inp.value = '';
+        sendBtn.disabled = false;
+      });
+      chipsDiv.appendChild(btn);
+    });
+    wrap.appendChild(chipsDiv);
+
+    const orLbl = document.createElement('div');
+    orLbl.className = 'or-lbl';
+    orLbl.textContent = 'または自分で入力（日本語もOK）';
+    wrap.appendChild(orLbl);
+  }
+
+  // text input
+  const inp = q.multiline
+    ? Object.assign(document.createElement('textarea'), { rows: 3 })
+    : Object.assign(document.createElement('input'), { type: 'text' });
+  inp.className = 'txt-inp';
+  inp.placeholder = q.placeholder;
+
+  const sendBtn = document.createElement('button');
+  sendBtn.className = 'send-btn';
+  sendBtn.textContent = '送る →';
+  sendBtn.disabled = true;
+
+  const inpWrap = document.createElement('div');
+  inpWrap.className = 'inp-wrap';
+  inpWrap.appendChild(inp);
+
+  const row = document.createElement('div');
+  row.className = 'inp-row';
+  row.appendChild(inpWrap);
+  row.appendChild(sendBtn);
+  wrap.appendChild(row);
+  chatEl().appendChild(wrap);
+
+  pending = '';
+
+  inp.addEventListener('input', () => {
+    pending = inp.value.trim();
+    if (pending && q.chips.length) {
+      wrap.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
+    }
+    sendBtn.disabled = !pending;
+    if (q.multiline) autoHeight(inp);
+  });
+
+  if (!q.multiline) {
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && pending) { e.preventDefault(); submit(); }
+    });
+  }
+
+  sendBtn.addEventListener('click', submit);
+  inp.focus();
+}
+
+// ── SUBMIT (async) ────────────────────────────────────
+async function submit() {
+  if (!pending) return;
+  const val = pending.trim();
+  answers[Qs[curQ].id] = val;
+  document.getElementById('qInput')?.remove();
+  userMsg(val);
+  await nextQ(curQ + 1);
+}
+
+// ── SPEECH GENERATION ─────────────────────────────────
+async function generateSpeech() {
+  const t = showTyping();
+  try {
+    const r = await fetch('/api/speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers }),
+    });
+    if (!r.ok) throw new Error('server error');
+    const data = await r.json();
+    t.remove();
+    botMsg('ありがとうございます！✨ ドラフトを作成しました。');
+    await wait(700);
+    buildDraft(data.sections);
+  } catch {
+    t.remove();
+    botMsg('エラーが発生しました 🙏 もう一度試してください。');
+  }
+}
+
+// ── DRAFT ─────────────────────────────────────────────
+function buildDraft(sections) {
+  // sections = { point, example, conclusion }
+  const rows = [
+    { label: '',  color: '#ddd',     text: 'Let me tell you about my weekend.' },
+    { label: 'P', color: '#4A90D9',  text: sections.point      || '' },
+    { label: 'E', color: '#E8960F',  text: sections.example    || '' },
+    { label: 'P', color: '#9B59B6',  text: sections.conclusion || '' },
+    { label: '',  color: '#ddd',     text: 'Do you have any questions or comments?' },
+  ];
+
+  const box = document.getElementById('draftBox');
+  box.innerHTML = '';
+  rows.forEach(row => {
+    const sec = document.createElement('div');
+    sec.className = 'dsec';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'dsec-label';
+    lbl.style.color = row.color;
+    lbl.textContent = row.label;
+    sec.appendChild(lbl);
+
+    const ta = document.createElement('textarea');
+    ta.className = 'dsec-text';
+    ta.value = row.text;
+    ta.spellcheck = false;
+    ta.addEventListener('input', () => autoHeight(ta));
+    sec.appendChild(ta);
+    box.appendChild(sec);
+
+    requestAnimationFrame(() => autoHeight(ta));
+  });
+
+  chatEl().style.display = 'none';
+  document.getElementById('draftScreen').classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── COPY ──────────────────────────────────────────────
+function doCopy() {
+  const parts = [];
+  document.querySelectorAll('.dsec-text').forEach(ta => {
+    const v = ta.value.trim();
+    if (v) parts.push(v);
+  });
+  const text = parts.join('\n\n');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(showToast).catch(() => fbCopy(text));
+  } else { fbCopy(text); }
+}
+function fbCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  Object.assign(ta.style, { position:'fixed', opacity:'0', top:'0', left:'0' });
+  document.body.appendChild(ta);
+  ta.focus(); ta.select(); document.execCommand('copy');
+  document.body.removeChild(ta); showToast();
+}
+function showToast() {
+  const el = document.getElementById('toast');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ── RESTART ───────────────────────────────────────────
+function restart() {
+  Object.keys(answers).forEach(k => delete answers[k]);
+  // reset AI chips
+  Qs.filter(q => q.needsAI).forEach(q => { q.chips = []; });
+  curQ = 0; pending = '';
+  chatEl().style.display = '';
+  document.getElementById('draftScreen').classList.remove('show');
+  init();
+}
+
+// ── UTILS ─────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function scrollEnd() {
+  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+}
+function autoHeight(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── BOOT ──────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
