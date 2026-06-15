@@ -67,7 +67,7 @@ Example: ["ready for a new week", "feeling refreshed and motivated"]`,
 app.post('/api/chips', async (req, res) => {
   const { questionId, answers } = req.body;
   const prompt = chipPrompt(questionId, answers);
-  if (!prompt) return res.status(400).json({ error: 'Unknown question' });
+  if (!prompt) return res.json({ chips: [] }); // ping or unknown → return empty
 
   try {
     const msg = await client.messages.create({

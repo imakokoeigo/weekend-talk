@@ -290,6 +290,12 @@ function init() {
   buildDots();
   chatEl().innerHTML = '';
   botMsg('こんにちは！🎉 週末の英語スピーチを一緒に作りましょう。<br>質問に答えると、AIがあなたに合った選択肢を出してくれます！');
+  // warm up the server in background so it's ready when the user reaches Q6
+  fetch('/api/chips', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ questionId: '_ping', answers: {} }),
+  }).catch(() => {});
   setTimeout(() => nextQ(0), 700);
 }
 
@@ -499,8 +505,33 @@ async function generateSpeech() {
     buildDraft(data.sections);
   } catch {
     t.remove();
-    botMsg('エラーが発生しました 🙏 もう一度試してください。');
+    appendErrorWithRetry();
   }
+}
+
+function appendErrorWithRetry() {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot';
+  wrap.id = 'errorMsg';
+  wrap.innerHTML = `
+    <div class="avatar">🤖</div>
+    <div class="bubble bot">
+      サーバーが応答しませんでした 🙏<br>
+      <small style="color:#aaa">（初回アクセス時は起動に時間がかかることがあります）</small><br><br>
+      <button onclick="retryGenerate()" style="
+        padding:8px 18px; border-radius:8px; border:none;
+        background:#667eea; color:white; font-size:13px;
+        font-weight:700; cursor:pointer; font-family:inherit;">
+        もう一度試す →
+      </button>
+    </div>`;
+  chatEl().appendChild(wrap);
+  scrollEnd();
+}
+
+async function retryGenerate() {
+  document.getElementById('errorMsg')?.remove();
+  await generateSpeech();
 }
 
 // ── DRAFT ─────────────────────────────────────────────
