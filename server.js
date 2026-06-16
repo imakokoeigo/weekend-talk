@@ -21,7 +21,7 @@ function extractObject(text) {
 
 // ── Chip generation prompts ──────────────────────────
 function chipPrompt(questionId, answers) {
-  const { adj, reason, example1, example2 } = answers;
+  const { adj, reason, example1 } = answers;
 
   const map = {
     reason: `
@@ -33,27 +33,20 @@ Example format: ["I was able to sleep in", "I had no plans at all"]`,
 
     example1: `
 Weekend felt "${adj}" because: "${reason}".
-Generate 5 specific English activity phrases this person might have done.
+Generate 6 specific English phrases for things this person might have done over the weekend — include two different types of activities.
 Each phrase starts with a past-tense verb, 4–8 words.
 Return ONLY a valid JSON array of strings.
-Example: ["went to a café in the neighborhood", "stayed home watching Netflix"]`,
-
-    example2: `
-After "${example1}" on the weekend.
-Generate 5 natural follow-up activities for the rest of the weekend.
-Each starts with a past-tense verb, 4–8 words.
-Return ONLY a valid JSON array of strings.
-Example: ["went for a walk in the park", "cooked a simple dinner at home"]`,
+Example: ["went to a café with a friend", "stayed home watching Netflix"]`,
 
     feeling: `
-Weekend activities: "${example1}" and "${example2}".
+Weekend activities: "${example1}".
 Generate 6 English adjectives or very short phrases (1–3 words)
 describing how these activities felt.
 Return ONLY a valid JSON array of strings.
 Example: ["delicious", "so relaxing", "really fun"]`,
 
     now: `
-The user had a "${adj}" weekend: "${example1}", then "${example2}".
+The user had a "${adj}" weekend doing: "${example1}".
 Generate 6 short English phrases (5–10 words) about how they feel
 heading into the new week.
 Return ONLY a valid JSON array of strings.
@@ -85,7 +78,7 @@ app.post('/api/chips', async (req, res) => {
 
 // POST /api/speech ────────────────────────────────────
 app.post('/api/speech', async (req, res) => {
-  const { adj, reason, example1, example2, feeling, now } = req.body.answers;
+  const { adj, reason, example1, feeling, now } = req.body.answers;
 
   const prompt = `
 You help a Japanese English learner write a PREP-structure "Weekend Talk" speech.
@@ -93,8 +86,7 @@ You help a Japanese English learner write a PREP-structure "Weekend Talk" speech
 Student's answers (may include Japanese — translate naturally into English):
 - Weekend feeling : "${adj}"
 - Reason          : "${reason}"
-- Main activity   : "${example1}"
-- After that      : "${example2}"
+- Two episodes    : "${example1}"
 - How it felt     : "${feeling}"
 - Current mood    : "${now}"
 
@@ -103,12 +95,13 @@ Write a natural spoken-English speech and return ONLY this JSON object
 
 {
   "point":      "2 sentences — My weekend was really [adj]. This is because [reason].",
-  "example":    "3 sentences — For example, [example1]. After that, [example2]. It was really [feeling]!",
+  "example":    "3–4 sentences — Describe the two episodes naturally. It was really [feeling]!",
   "conclusion": "2 sentences — Overall, I had a [adj] weekend. Now I am [now]."
 }
 
 Rules:
 - Translate any Japanese naturally to English
+- Expand the two episodes into natural English sentences (split them if written together)
 - Keep it conversational and natural (80–110 words total across all three fields)
 - Vary sentence structure slightly so it doesn't sound robotic`;
 

@@ -35,10 +35,7 @@
     .dot.active { background: var(--sc); transform: scale(1.35); }
 
     /* ── CHAT ── */
-    .chat {
-      max-width: 620px; margin: 0 auto;
-      padding: 18px 14px 80px;
-    }
+    .chat { max-width: 620px; margin: 0 auto; padding: 18px 14px 80px; }
 
     /* ── BUBBLES ── */
     .msg { display: flex; margin-bottom: 12px; align-items: flex-end; gap: 8px; }
@@ -64,14 +61,12 @@
       background: var(--sc, #4A90D9); color: white;
       border-bottom-right-radius: 4px;
     }
-    .bubble .hint { font-size: 11.5px; color: #aaa; margin-top: 3px; }
 
     /* ── TYPING ── */
     .typing-wrap { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
     .typing-dots {
       background: white; border-radius: 18px; padding: 11px 15px;
-      display: flex; gap: 4px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      display: flex; gap: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
     .typing-dots span {
       width: 6px; height: 6px; background: #bbb; border-radius: 50%;
@@ -91,18 +86,7 @@
       box-shadow: 0 2px 10px rgba(0,0,0,0.07);
     }
 
-    .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
-    .chip {
-      padding: 6px 13px; border-radius: 20px;
-      border: 2px solid var(--cl, #ddd);
-      background: white; color: var(--sc, #666);
-      font-size: 13px; cursor: pointer;
-      transition: all .15s; font-family: inherit;
-    }
-    .chip:hover  { background: var(--cbg, #f5f5f5); }
-    .chip.sel    { background: var(--sc); color: white; border-color: var(--sc); }
-
-    .or-lbl { font-size: 11px; color: #bbb; margin-bottom: 5px; }
+    /* input + voice + send row */
     .inp-row { display: flex; gap: 8px; align-items: flex-end; }
     .inp-wrap { flex: 1; }
     .txt-inp {
@@ -113,6 +97,26 @@
       color: #333; background: white; resize: none;
     }
     .txt-inp:focus { border-color: var(--sc, #4A90D9); }
+
+    /* voice button */
+    .voice-btn {
+      padding: 9px 11px; border-radius: 10px;
+      border: 2px solid #e5e5e5; background: white;
+      font-size: 16px; cursor: pointer; flex-shrink: 0;
+      transition: all .15s; align-self: flex-end;
+      line-height: 1;
+    }
+    .voice-btn:hover  { border-color: #bbb; }
+    .voice-btn.on     {
+      background: #ff4a4a; border-color: #ff4a4a; color: white;
+      animation: vbpulse 1s ease-in-out infinite;
+    }
+    @keyframes vbpulse {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.12); }
+    }
+
+    /* send button */
     .send-btn {
       padding: 9px 15px; border-radius: 10px;
       background: var(--sc, #4A90D9); color: white;
@@ -123,6 +127,26 @@
     }
     .send-btn:disabled         { opacity: .35; cursor: not-allowed; }
     .send-btn:not(:disabled):hover { filter: brightness(1.08); }
+
+    /* ── HINTS (display only) ── */
+    .hints-block {
+      margin-top: 12px;
+      padding-top: 11px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .hints-label {
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .4px; color: #c0c0c0; margin-bottom: 7px;
+    }
+    .hints-list {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .hint-item {
+      padding: 5px 11px; border-radius: 16px;
+      background: #f5f5f5; color: #aaa;
+      font-size: 12.5px; pointer-events: none; user-select: none;
+    }
+    .hints-loading { font-size: 12px; color: #ccc; }
 
     /* ── DRAFT SCREEN ── */
     .draft-screen {
@@ -221,60 +245,45 @@
 
 <script>
 // ── QUESTIONS ────────────────────────────────────────
-// needsAI: true → chips are fetched from /api/chips after previous answer
 const Qs = [
   {
-    id: 'adj', needsAI: false,
+    id: 'adj', needsAI: false, lang: 'en-US',
     sc: '#4A90D9', cl: '#BDD8F5', cbg: '#EBF4FF',
-    bot: '週末、どんな感じでしたか？😊',
-    hint: '一言で表してみよう',
-    chips: ['relaxing','fun','busy','productive','exciting',
-            'refreshing','peaceful','enjoyable','eventful','tiring','memorable'],
-    placeholder: '例: relaxing / リラックスできた',
+    bot: '週末を一言で表すとどんな感じでしたか。<br><span style="font-size:13px;color:#999;font-weight:400">It was … に続けて言ってみましょう。</span>',
+    staticHints: ['relaxing','fun','busy','productive','exciting',
+                  'refreshing','peaceful','enjoyable','eventful','tiring','memorable'],
+    placeholder: 'relaxing / fun / peaceful …',
     multiline: false,
   },
   {
-    id: 'reason', needsAI: true,
+    id: 'reason', needsAI: true, lang: 'ja-JP',
     sc: '#5BAD6F', cl: '#A8DAAF', cbg: '#EDFAF1',
-    bot: 'なんでそう思いましたか？',
-    hint: 'AIがあなたの回答に合った選択肢を用意しました',
-    chips: [],
+    bot: 'なぜそう思ったのか、理由を一言で言うと？',
+    staticHints: [],
     placeholder: '例: I was able to relax / 友達と過ごせたから',
     multiline: false,
   },
   {
-    id: 'example1', needsAI: true,
+    id: 'example1', needsAI: true, lang: 'ja-JP',
     sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
-    bot: '具体的に何をしましたか？✏️',
-    hint: 'いつ・どこで・誰と・何をしたか、日本語でOK！',
-    chips: [],
-    placeholder: '例：土曜日の午後、友達と渋谷でランチした',
+    bot: '具体的なエピソードを二つ教えてください。',
+    staticHints: [],
+    placeholder: '例：土曜の午後は友達とカフェでランチ。日曜は家で映画を観た。',
     multiline: true,
   },
   {
-    id: 'example2', needsAI: true,
+    id: 'feeling', needsAI: true, lang: 'en-US',
     sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
-    bot: '他には何をしましたか？',
-    hint: 'その後にしたことを教えてください',
-    chips: [],
-    placeholder: '例：夕方はカラオケに行った / 家でゆっくり映画を観た',
-    multiline: true,
-  },
-  {
-    id: 'feeling', needsAI: true,
-    sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
-    bot: 'そのときどんな感じでしたか？',
-    hint: '一言で教えてください',
-    chips: [],
-    placeholder: '例: amazing / めちゃくちゃ楽しかった',
+    bot: 'その時の感想を教えてください。',
+    staticHints: [],
+    placeholder: '例: delicious / amazing / 楽しかった',
     multiline: false,
   },
   {
-    id: 'now', needsAI: true,
+    id: 'now', needsAI: true, lang: 'ja-JP',
     sc: '#9B59B6', cl: '#C89FD6', cbg: '#F7F0FF',
-    bot: '今の気持ちはどうですか？月曜日に向けて！',
-    hint: '今の気分を教えてください',
-    chips: [],
+    bot: '新しい1週間をどんな気持ちで迎えていますか。',
+    staticHints: [],
     placeholder: '例: feeling refreshed / やる気満々',
     multiline: false,
   },
@@ -289,8 +298,7 @@ let pending = '';
 function init() {
   buildDots();
   chatEl().innerHTML = '';
-  botMsg('こんにちは！🎉 週末の英語スピーチを一緒に作りましょう。<br>質問に答えると、AIがあなたに合った選択肢を出してくれます！');
-  // warm up the server in background so it's ready when the user reaches Q6
+  botMsg('こんにちは！🎉 週末の英語スピーチを一緒に作りましょう。<br>質問に答えながらスピーチを完成させていきます！');
   fetch('/api/chips', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -305,8 +313,7 @@ function buildDots() {
   el.innerHTML = '';
   Qs.forEach((q, i) => {
     const d = document.createElement('div');
-    d.className = 'dot';
-    d.id = `dot${i}`;
+    d.className = 'dot'; d.id = `dot${i}`;
     d.style.setProperty('--sc', q.sc);
     el.appendChild(d);
   });
@@ -326,15 +333,10 @@ function refreshDots() {
 // ── CHAT HELPERS ─────────────────────────────────────
 function chatEl() { return document.getElementById('chat'); }
 
-function botMsg(html, hint) {
+function botMsg(html) {
   const wrap = document.createElement('div');
   wrap.className = 'msg bot';
-  wrap.innerHTML = `
-    <div class="avatar">🤖</div>
-    <div class="bubble bot">
-      ${html}
-      ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-    </div>`;
+  wrap.innerHTML = `<div class="avatar">🤖</div><div class="bubble bot">${html}</div>`;
   chatEl().appendChild(wrap);
   scrollEnd();
 }
@@ -351,17 +353,15 @@ function userMsg(text) {
 
 function showTyping() {
   const el = document.createElement('div');
-  el.className = 'typing-wrap';
-  el.id = 'typing';
-  el.innerHTML = `
-    <div class="avatar">🤖</div>
+  el.className = 'typing-wrap'; el.id = 'typing';
+  el.innerHTML = `<div class="avatar">🤖</div>
     <div class="typing-dots"><span></span><span></span><span></span></div>`;
   chatEl().appendChild(el);
   scrollEnd();
   return el;
 }
 
-// ── QUESTION FLOW (async) ─────────────────────────────
+// ── QUESTION FLOW ─────────────────────────────────────
 async function nextQ(idx) {
   curQ = idx;
   refreshDots();
@@ -369,78 +369,54 @@ async function nextQ(idx) {
   const q = Qs[idx];
   if (!q) { await generateSpeech(); return; }
 
-  // Fetch AI chips if needed
-  if (q.needsAI) {
-    const t = showTyping();
-    try {
-      const r = await fetch('/api/chips', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: q.id, answers }),
-      });
-      if (r.ok) {
-        const data = await r.json();
-        q.chips = Array.isArray(data.chips) ? data.chips : [];
-      }
-    } catch {
-      q.chips = []; // network error → free input only
-    }
-    t.remove();
-    await wait(200);
-  }
+  // Show question immediately (no waiting for AI)
+  const t = showTyping();
+  await wait(380);
+  t.remove();
 
-  const t2 = showTyping();
-  await wait(450);
-  t2.remove();
-
-  botMsg(esc(q.bot), q.needsAI && q.chips.length
-    ? 'AIがあなたの回答に合った選択肢を用意しました'
-    : q.hint);
+  botMsg(q.bot);
   appendInput(q);
   scrollEnd();
+
+  // Fetch AI hints in background for needsAI questions
+  if (q.needsAI) fetchHintsInBackground(q);
+}
+
+async function fetchHintsInBackground(q) {
+  try {
+    const r = await fetch('/api/chips', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId: q.id, answers }),
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    const chips = Array.isArray(data.chips) ? data.chips : [];
+    // Update hints block if input is still visible
+    const block = document.getElementById('hintsBlock');
+    if (block && chips.length) renderHints(block, chips);
+  } catch { /* fail silently */ }
 }
 
 // ── INPUT ─────────────────────────────────────────────
 function appendInput(q) {
   const wrap = document.createElement('div');
-  wrap.className = 'q-input';
-  wrap.id = 'qInput';
-  wrap.style.setProperty('--sc',  q.sc);
-  wrap.style.setProperty('--cl',  q.cl);
+  wrap.className = 'q-input'; wrap.id = 'qInput';
+  wrap.style.setProperty('--sc', q.sc);
+  wrap.style.setProperty('--cl', q.cl);
   wrap.style.setProperty('--cbg', q.cbg);
 
-  // chips
-  if (q.chips.length) {
-    const chipsDiv = document.createElement('div');
-    chipsDiv.className = 'chips';
-    q.chips.forEach(word => {
-      const btn = document.createElement('button');
-      btn.className = 'chip';
-      btn.textContent = word;
-      btn.addEventListener('click', () => {
-        chipsDiv.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
-        btn.classList.add('sel');
-        pending = word;
-        inp.value = '';
-        sendBtn.disabled = false;
-      });
-      chipsDiv.appendChild(btn);
-    });
-    wrap.appendChild(chipsDiv);
-
-    const orLbl = document.createElement('div');
-    orLbl.className = 'or-lbl';
-    orLbl.textContent = 'または自分で入力（日本語もOK）';
-    wrap.appendChild(orLbl);
-  }
-
-  // text input
+  // ── text input ──
   const inp = q.multiline
     ? Object.assign(document.createElement('textarea'), { rows: 3 })
     : Object.assign(document.createElement('input'), { type: 'text' });
   inp.className = 'txt-inp';
   inp.placeholder = q.placeholder;
 
+  // ── voice button ──
+  const voiceBtn = makeVoiceBtn(inp, q);
+
+  // ── send button ──
   const sendBtn = document.createElement('button');
   sendBtn.className = 'send-btn';
   sendBtn.textContent = '送る →';
@@ -453,32 +429,82 @@ function appendInput(q) {
   const row = document.createElement('div');
   row.className = 'inp-row';
   row.appendChild(inpWrap);
+  row.appendChild(voiceBtn);
   row.appendChild(sendBtn);
   wrap.appendChild(row);
+
+  // ── hints area (below input) ──
+  const hintsBlock = document.createElement('div');
+  hintsBlock.className = 'hints-block';
+  hintsBlock.id = 'hintsBlock';
+
+  if (!q.needsAI && q.staticHints.length) {
+    renderHints(hintsBlock, q.staticHints);
+  } else if (q.needsAI) {
+    hintsBlock.innerHTML = '<span class="hints-loading">参考例を生成中…</span>';
+  }
+  wrap.appendChild(hintsBlock);
   chatEl().appendChild(wrap);
 
+  // ── events ──
   pending = '';
-
   inp.addEventListener('input', () => {
     pending = inp.value.trim();
-    if (pending && q.chips.length) {
-      wrap.querySelectorAll('.chip').forEach(c => c.classList.remove('sel'));
-    }
     sendBtn.disabled = !pending;
     if (q.multiline) autoHeight(inp);
   });
-
   if (!q.multiline) {
     inp.addEventListener('keydown', e => {
       if (e.key === 'Enter' && pending) { e.preventDefault(); submit(); }
     });
   }
-
   sendBtn.addEventListener('click', submit);
   inp.focus();
 }
 
-// ── SUBMIT (async) ────────────────────────────────────
+function renderHints(container, items) {
+  container.innerHTML = `
+    <div class="hints-label">参考例</div>
+    <div class="hints-list">
+      ${items.map(w => `<span class="hint-item">${esc(w)}</span>`).join('')}
+    </div>`;
+}
+
+// ── VOICE ─────────────────────────────────────────────
+function makeVoiceBtn(inp, q) {
+  const btn = document.createElement('button');
+  btn.className = 'voice-btn';
+  btn.type = 'button';
+  btn.title = '音声入力';
+  btn.textContent = '🎤';
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { btn.style.display = 'none'; return btn; }
+
+  const rec = new SR();
+  rec.lang = q.lang || 'ja-JP';
+  rec.continuous = false;
+  rec.interimResults = false;
+
+  rec.onstart  = () => btn.classList.add('on');
+  rec.onend    = () => btn.classList.remove('on');
+  rec.onerror  = () => btn.classList.remove('on');
+  rec.onresult = e => {
+    const t = e.results[0][0].transcript;
+    inp.value = t;
+    pending = t;
+    document.querySelector('.send-btn').disabled = false;
+    if (q.multiline) autoHeight(inp);
+  };
+
+  btn.addEventListener('click', () => {
+    btn.classList.contains('on') ? rec.stop() : rec.start();
+  });
+
+  return btn;
+}
+
+// ── SUBMIT ────────────────────────────────────────────
 async function submit() {
   if (!pending) return;
   const val = pending.trim();
@@ -497,7 +523,7 @@ async function generateSpeech() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ answers }),
     });
-    if (!r.ok) throw new Error('server error');
+    if (!r.ok) throw new Error();
     const data = await r.json();
     t.remove();
     botMsg('ありがとうございます！✨ ドラフトを作成しました。');
@@ -511,17 +537,16 @@ async function generateSpeech() {
 
 function appendErrorWithRetry() {
   const wrap = document.createElement('div');
-  wrap.className = 'msg bot';
-  wrap.id = 'errorMsg';
+  wrap.className = 'msg bot'; wrap.id = 'errorMsg';
   wrap.innerHTML = `
     <div class="avatar">🤖</div>
     <div class="bubble bot">
       サーバーが応答しませんでした 🙏<br>
-      <small style="color:#aaa">（初回アクセス時は起動に時間がかかることがあります）</small><br><br>
+      <small style="color:#bbb">（初回は起動に少し時間がかかることがあります）</small><br><br>
       <button onclick="retryGenerate()" style="
-        padding:8px 18px; border-radius:8px; border:none;
-        background:#667eea; color:white; font-size:13px;
-        font-weight:700; cursor:pointer; font-family:inherit;">
+        padding:8px 18px;border-radius:8px;border:none;
+        background:#667eea;color:white;font-size:13px;
+        font-weight:700;cursor:pointer;font-family:inherit;">
         もう一度試す →
       </button>
     </div>`;
@@ -536,7 +561,6 @@ async function retryGenerate() {
 
 // ── DRAFT ─────────────────────────────────────────────
 function buildDraft(sections) {
-  // sections = { point, example, conclusion }
   const rows = [
     { label: '',  color: '#ddd',     text: 'Let me tell you about my weekend.' },
     { label: 'P', color: '#4A90D9',  text: sections.point      || '' },
@@ -544,30 +568,19 @@ function buildDraft(sections) {
     { label: 'P', color: '#9B59B6',  text: sections.conclusion || '' },
     { label: '',  color: '#ddd',     text: 'Do you have any questions or comments?' },
   ];
-
   const box = document.getElementById('draftBox');
   box.innerHTML = '';
   rows.forEach(row => {
-    const sec = document.createElement('div');
-    sec.className = 'dsec';
-
+    const sec = document.createElement('div'); sec.className = 'dsec';
     const lbl = document.createElement('div');
-    lbl.className = 'dsec-label';
-    lbl.style.color = row.color;
-    lbl.textContent = row.label;
-    sec.appendChild(lbl);
-
+    lbl.className = 'dsec-label'; lbl.style.color = row.color; lbl.textContent = row.label;
     const ta = document.createElement('textarea');
-    ta.className = 'dsec-text';
-    ta.value = row.text;
-    ta.spellcheck = false;
+    ta.className = 'dsec-text'; ta.value = row.text; ta.spellcheck = false;
     ta.addEventListener('input', () => autoHeight(ta));
-    sec.appendChild(ta);
+    sec.appendChild(lbl); sec.appendChild(ta);
     box.appendChild(sec);
-
     requestAnimationFrame(() => autoHeight(ta));
   });
-
   chatEl().style.display = 'none';
   document.getElementById('draftScreen').classList.add('show');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -577,21 +590,19 @@ function buildDraft(sections) {
 function doCopy() {
   const parts = [];
   document.querySelectorAll('.dsec-text').forEach(ta => {
-    const v = ta.value.trim();
-    if (v) parts.push(v);
+    const v = ta.value.trim(); if (v) parts.push(v);
   });
   const text = parts.join('\n\n');
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(showToast).catch(() => fbCopy(text));
-  } else { fbCopy(text); }
+  navigator.clipboard
+    ? navigator.clipboard.writeText(text).then(showToast).catch(() => fbCopy(text))
+    : fbCopy(text);
 }
 function fbCopy(text) {
   const ta = document.createElement('textarea');
   ta.value = text;
   Object.assign(ta.style, { position:'fixed', opacity:'0', top:'0', left:'0' });
-  document.body.appendChild(ta);
-  ta.focus(); ta.select(); document.execCommand('copy');
-  document.body.removeChild(ta); showToast();
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  document.execCommand('copy'); document.body.removeChild(ta); showToast();
 }
 function showToast() {
   const el = document.getElementById('toast');
@@ -602,8 +613,6 @@ function showToast() {
 // ── RESTART ───────────────────────────────────────────
 function restart() {
   Object.keys(answers).forEach(k => delete answers[k]);
-  // reset AI chips
-  Qs.filter(q => q.needsAI).forEach(q => { q.chips = []; });
   curQ = 0; pending = '';
   chatEl().style.display = '';
   document.getElementById('draftScreen').classList.remove('show');
@@ -612,15 +621,13 @@ function restart() {
 
 // ── UTILS ─────────────────────────────────────────────
 function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 function scrollEnd() {
   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 }
 function autoHeight(el) {
-  el.style.height = 'auto';
-  el.style.height = el.scrollHeight + 'px';
+  el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px';
 }
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
