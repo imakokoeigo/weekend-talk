@@ -205,6 +205,27 @@
     .btn-restart { background: #667eea; color: white; border: none; }
     .btn-restart:hover { background: #5a6fd6; }
 
+    /* ── CHAT BACK BUTTON ── */
+    .btn-chat-back {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px; border-radius: 20px;
+      background: white; border: 1.5px solid #e0e0e0; color: #888;
+      font-size: 12.5px; font-weight: 600; cursor: pointer;
+      font-family: inherit; transition: all .15s; margin-bottom: 18px;
+    }
+    .btn-chat-back:hover { border-color: #bbb; color: #555; }
+
+    /* ── DRAFT DIVIDER ── */
+    .draft-divider {
+      max-width: 620px; margin: 0 auto 0;
+      padding: 0 14px;
+      display: none;
+    }
+    .draft-divider.show { display: block; }
+    .draft-divider hr {
+      border: none; border-top: 2px dashed #e0e0e0; margin: 0;
+    }
+
     /* ── TOAST ── */
     .toast {
       position: fixed; bottom: 24px; left: 50%;
@@ -233,7 +254,10 @@
 
 <div class="chat" id="chat"></div>
 
+<div class="draft-divider" id="draftDivider"><hr></div>
+
 <div class="draft-screen" id="draftScreen">
+  <button class="btn-chat-back" onclick="scrollToChat()">← 会話を見る</button>
   <div class="draft-title">✨ ドラフト完成！</div>
   <div class="draft-sub">このまま使ってもOK。自由に書き直してね 📝</div>
   <div class="prep-tags">
@@ -657,9 +681,9 @@ function buildDraft(sections) {
     box.appendChild(sec);
     requestAnimationFrame(() => autoHeight(ta));
   });
-  chatEl().style.display = 'none';
+  document.getElementById('draftDivider').classList.add('show');
   document.getElementById('draftScreen').classList.add('show');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('draftScreen').scrollIntoView({ behavior: 'smooth' });
 }
 
 // ── COPY ──────────────────────────────────────────────
@@ -690,9 +714,14 @@ function showToast() {
 function restart() {
   Object.keys(answers).forEach(k => delete answers[k]);
   curQ = 0; pending = '';
-  chatEl().style.display = '';
   document.getElementById('draftScreen').classList.remove('show');
+  document.getElementById('draftDivider').classList.remove('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   init();
+}
+
+function scrollToChat() {
+  chatEl().scrollIntoView({ behavior: 'smooth' });
 }
 
 // ── UTILS ─────────────────────────────────────────────
