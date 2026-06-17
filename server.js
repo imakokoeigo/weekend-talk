@@ -120,14 +120,14 @@ app.post('/api/followup', async (req, res) => {
   const prompts = {
     reason: `
 A Japanese English learner described their weekend as "${adj}".
-Their reason for feeling that way: "${answer}"
+Their reason: "${answer}"
 
-Is this reason specific enough for a natural English PREP speech?
-- Sufficient: gives a clear reason (e.g. "I could sleep in and relax", "I spent time with my family")
-- Insufficient: too vague (e.g. just "I relaxed", "it was good", single word)
+Is this reason specific enough for a PREP speech?
+- Sufficient: clear reason (e.g. "I could sleep in", "I spent time with my family")
+- Insufficient: too vague (e.g. single word, "it was good")
 
-If insufficient, write ONE short, natural English follow-up question to get more detail.
-Return ONLY JSON — no markdown: {"sufficient": true} OR {"sufficient": false, "question": "..."}`,
+If insufficient, write ONE short follow-up question IN JAPANESE to get more detail.
+Return ONLY JSON — no markdown: {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`,
 
     example1: `
 A Japanese English learner's weekend was "${adj}".
@@ -138,23 +138,24 @@ Goal: collect 2 specific episodes with enough detail for an 80-100 word speech.
 
 Evaluate:
 - If fewer than 2 distinct episodes → ask about a second one
-- If 2 episodes but very vague (e.g. "went out", "stayed home") → ask for one specific detail
+- If 2 episodes but very vague → ask for one specific detail
 - If 2 episodes with reasonable detail → return sufficient: true
 
-Ask naturally and conversationally, like a friendly chat partner.
-Return ONLY JSON — no markdown: {"sufficient": true} OR {"sufficient": false, "question": "..."}`,
+Write the follow-up question IN JAPANESE, conversationally and friendly.
+Return ONLY JSON — no markdown: {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`,
 
     feeling: `
-A Japanese English learner described how their weekend activities felt: "${answer}"
-One or two words (e.g. "fun", "really nice") are perfectly fine for this question.
-Only return sufficient: false if the answer is completely empty or makes no sense.
-Return ONLY JSON: {"sufficient": true} OR {"sufficient": false, "question": "..."}`,
+A Japanese English learner described how their weekend felt: "${answer}"
+One or two words are perfectly fine. Only return sufficient: false if completely empty or nonsensical.
+If asking a follow-up, write it IN JAPANESE.
+Return ONLY JSON: {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`,
 
     now: `
-A Japanese English learner described their mood heading into the new week: "${answer}"
-Context: they had a "${adj}" weekend doing "${example1}".
-A short phrase is fine. Only ask a follow-up if the answer is too vague to build a sentence from.
-Return ONLY JSON: {"sufficient": true} OR {"sufficient": false, "question": "..."}`,
+A Japanese English learner's mood heading into the new week: "${answer}"
+Context: "${adj}" weekend, did "${example1}".
+A short phrase is fine. Only ask if too vague to build a sentence from.
+If asking a follow-up, write it IN JAPANESE.
+Return ONLY JSON: {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`,
   };
 
   const prompt = prompts[questionId];

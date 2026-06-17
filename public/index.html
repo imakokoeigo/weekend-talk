@@ -359,7 +359,7 @@ async function init() {
     body: JSON.stringify({ questionId: '_ping', answers: {} }),
   }).catch(() => {});
   await wait(600);
-  botMsg('回答はすべて<strong>英語</strong>でお願いします 🇬🇧<br><span style="font-size:13px;color:#999">英語での言い方がわからなければ日本語でOK！<br>英語フレーズを提案するので、それを参考に英語で入力してね。</span>');
+  botMsg('回答はすべて<strong>英語</strong>でお願いします！<br><span style="font-size:13px;color:#999">英語での言い方がわからなければ日本語でOK！<br>英語フレーズを提案するので、それを参考に英語で入力してね。</span>');
   setTimeout(() => nextQ(0), 900);
 }
 
