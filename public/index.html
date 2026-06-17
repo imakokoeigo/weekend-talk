@@ -205,6 +205,19 @@
     .btn-restart { background: #667eea; color: white; border: none; }
     .btn-restart:hover { background: #5a6fd6; }
 
+    .btn-speak {
+      width: 100%; padding: 13px; border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+      background: #EBF4FF; border: 2px solid #4A90D9; color: #4A90D9;
+      margin-bottom: 9px;
+    }
+    .btn-speak:hover { background: #dbeeff; }
+    .btn-speak.speaking {
+      background: #fff0f0; border-color: #ff4a4a; color: #ff4a4a;
+      animation: vbpulse 1.4s ease-in-out infinite;
+    }
+
     /* ── CHAT BACK BUTTON ── */
     .btn-chat-back {
       display: inline-flex; align-items: center; gap: 5px;
@@ -268,6 +281,7 @@
   </div>
   <div class="draft-box" id="draftBox"></div>
   <div class="draft-tip">💡 気に入らない表現は直接編集できます</div>
+  <button class="btn-speak" id="speakBtn" onclick="speakDraft()">🔊 スピーチを読み上げる</button>
   <div class="draft-btns">
     <button class="btn-copy"    onclick="doCopy()">📋 コピーする</button>
     <button class="btn-restart" onclick="restart()">🔄 やり直す</button>
@@ -710,8 +724,51 @@ function showToast() {
   setTimeout(() => el.classList.remove('show'), 2000);
 }
 
+// ── SPEAK ─────────────────────────────────────────────
+function speakDraft() {
+  const synth = window.speechSynthesis;
+  const btn   = document.getElementById('speakBtn');
+
+  if (synth.speaking) {
+    synth.cancel();
+    btn.textContent = '🔊 スピーチを読み上げる';
+    btn.classList.remove('speaking');
+    return;
+  }
+
+  const parts = [];
+  document.querySelectorAll('.dsec-text').forEach(ta => {
+    const v = ta.value.trim(); if (v) parts.push(v);
+  });
+  if (!parts.length) return;
+
+  const utt = new SpeechSynthesisUtterance(parts.join(' '));
+  utt.lang  = 'en-US';
+  utt.rate  = 0.88;
+  utt.pitch = 1;
+
+  // Prefer a natural-sounding English voice if available
+  const voices = synth.getVoices();
+  const enVoice = voices.find(v => v.lang.startsWith('en') && !v.localService)
+                || voices.find(v => v.lang.startsWith('en'));
+  if (enVoice) utt.voice = enVoice;
+
+  btn.textContent = '⏹ 読み上げ中… (タップで停止)';
+  btn.classList.add('speaking');
+
+  const reset = () => {
+    btn.textContent = '🔊 スピーチを読み上げる';
+    btn.classList.remove('speaking');
+  };
+  utt.onend  = reset;
+  utt.onerror = reset;
+
+  synth.speak(utt);
+}
+
 // ── RESTART ───────────────────────────────────────────
 function restart() {
+  window.speechSynthesis?.cancel();
   Object.keys(answers).forEach(k => delete answers[k]);
   curQ = 0; pending = '';
   document.getElementById('draftScreen').classList.remove('show');
