@@ -43,11 +43,13 @@
     .msg.user { flex-direction: row-reverse; }
 
     .avatar {
-      width: 30px; height: 30px; border-radius: 50%;
-      background: #667eea;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: #f0f0f0;
       display: flex; align-items: center; justify-content: center;
       font-size: 15px; flex-shrink: 0;
+      overflow: hidden;
     }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
     .bubble {
       max-width: 78%; padding: 9px 13px; border-radius: 18px;
       font-size: 14.5px; line-height: 1.6;
@@ -291,6 +293,9 @@
 <div class="toast" id="toast">コピーしました！</div>
 
 <script>
+// ── RILEY AVATAR ─────────────────────────────────────
+const AVATAR = '<div class="avatar"><img src="/image/AnsweringRiley.png" alt="Riley"></div>';
+
 // ── QUESTIONS ────────────────────────────────────────
 const Qs = [
   {
@@ -340,6 +345,8 @@ const Qs = [
 const answers = {};
 let curQ = 0;
 let pending = '';
+let followUpCount = 0;   // how many follow-ups asked for current question
+let partialAnswer = '';  // accumulated answer during follow-ups
 
 // ── BOOT ─────────────────────────────────────────────
 async function init() {
@@ -385,7 +392,7 @@ function chatEl() { return document.getElementById('chat'); }
 function botMsg(html) {
   const wrap = document.createElement('div');
   wrap.className = 'msg bot';
-  wrap.innerHTML = `<div class="avatar">🤖</div><div class="bubble bot">${html}</div>`;
+  wrap.innerHTML = `${AVATAR}<div class="bubble bot">${html}</div>`;
   chatEl().appendChild(wrap);
   scrollEnd();
 }
@@ -403,8 +410,7 @@ function userMsg(text) {
 function showTyping() {
   const el = document.createElement('div');
   el.className = 'typing-wrap'; el.id = 'typing';
-  el.innerHTML = `<div class="avatar">🤖</div>
-    <div class="typing-dots"><span></span><span></span><span></span></div>`;
+  el.innerHTML = `${AVATAR}<div class="typing-dots"><span></span><span></span><span></span></div>`;
   chatEl().appendChild(el);
   scrollEnd();
   return el;
@@ -487,8 +493,10 @@ function appendInput(q, translationHints = null) {
   hintsBlock.className = 'hints-block';
   hintsBlock.id = 'hintsBlock';
 
-  if (translationHints) {
+  if (translationHints && translationHints !== 'none' && translationHints.length) {
     renderTranslations(hintsBlock, translationHints);
+  } else if (translationHints === 'none') {
+    hintsBlock.style.display = 'none'; // hide during follow-up
   } else if (!q.needsAI && q.staticHints.length) {
     renderHints(hintsBlock, q.staticHints);
   } else if (q.needsAI) {
@@ -616,16 +624,63 @@ async function submit() {
   if (!pending) return;
   const val = pending.trim();
 
-  // If Japanese detected, suggest English instead
   if (isJapanese(val)) {
     await handleJapanese(val);
     return;
   }
 
-  answers[Qs[curQ].id] = val;
+  // Accumulate with any previous partial answer
+  const accumulated = partialAnswer ? `${partialAnswer}. ${val}` : val;
+
   document.getElementById('qInput')?.remove();
   userMsg(val);
-  await nextQ(curQ + 1);
+
+  // Q1 (adj) needs no follow-up — just move on
+  if (Qs[curQ].id === 'adj') {
+    saveAndNext(accumulated);
+    return;
+  }
+
+  await checkAndProceed(accumulated);
+}
+
+async function checkAndProceed(accumulated) {
+  const q = Qs[curQ];
+  const t = showTyping();
+  try {
+    const r = await fetch('/api/followup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        questionId: q.id,
+        answer: accumulated,
+        answers,
+        followUpCount,
+      }),
+    });
+    const data = r.ok ? await r.json() : { sufficient: true };
+    t.remove();
+
+    if (!data.sufficient && data.question) {
+      // Ask a follow-up question
+      partialAnswer = accumulated;
+      followUpCount++;
+      botMsg(data.question);
+      appendInput(q, 'none'); // no hints during follow-up
+    } else {
+      saveAndNext(accumulated);
+    }
+  } catch {
+    t.remove();
+    saveAndNext(accumulated); // fail gracefully
+  }
+}
+
+function saveAndNext(answer) {
+  answers[Qs[curQ].id] = answer;
+  partialAnswer = '';
+  followUpCount = 0;
+  nextQ(curQ + 1);
 }
 
 // ── SPEECH GENERATION ─────────────────────────────────
@@ -641,6 +696,14 @@ async function generateSpeech() {
     const data = await r.json();
     t.remove();
     botMsg('ありがとうございます！✨ ドラフトを作成しました。');
+
+    // Show AI inference notes if any
+    if (Array.isArray(data.notes) && data.notes.length) {
+      await wait(500);
+      const list = data.notes.map(n => `・${esc(n)}`).join('<br>');
+      botMsg(`こんな風に補完・追加しました 📝<br><span style="font-size:13px;color:#666;line-height:2.2">${list}</span>`);
+    }
+
     await wait(700);
     buildDraft(data.sections);
   } catch {
@@ -653,7 +716,7 @@ function appendErrorWithRetry() {
   const wrap = document.createElement('div');
   wrap.className = 'msg bot'; wrap.id = 'errorMsg';
   wrap.innerHTML = `
-    <div class="avatar">🤖</div>
+    ${AVATAR}
     <div class="bubble bot">
       サーバーが応答しませんでした 🙏<br>
       <small style="color:#bbb">（初回は起動に少し時間がかかることがあります）</small><br><br>
@@ -771,6 +834,7 @@ function restart() {
   window.speechSynthesis?.cancel();
   Object.keys(answers).forEach(k => delete answers[k]);
   curQ = 0; pending = '';
+  followUpCount = 0; partialAnswer = '';
   document.getElementById('draftScreen').classList.remove('show');
   document.getElementById('draftDivider').classList.remove('show');
   window.scrollTo({ top: 0, behavior: 'smooth' });

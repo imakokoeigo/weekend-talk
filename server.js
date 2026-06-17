@@ -5,6 +5,7 @@ const path = require('path');
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/image', express.static(path.join(__dirname, 'image')));
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -60,7 +61,7 @@ Example: ["ready for a new week", "feeling refreshed and motivated"]`,
 app.post('/api/chips', async (req, res) => {
   const { questionId, answers } = req.body;
   const prompt = chipPrompt(questionId, answers);
-  if (!prompt) return res.json({ chips: [] }); // ping or unknown → return empty
+  if (!prompt) return res.json({ chips: [] });
 
   try {
     const msg = await client.messages.create({
@@ -72,7 +73,7 @@ app.post('/api/chips', async (req, res) => {
     res.json({ chips });
   } catch (err) {
     console.error('[chips]', err.message);
-    res.status(500).json({ chips: [] }); // fail gracefully → free input only
+    res.status(500).json({ chips: [] });
   }
 });
 
@@ -103,6 +104,79 @@ Example: ["it was really fun", "I had such a great time", "I really enjoyed it"]
   }
 });
 
+// POST /api/followup ──────────────────────────────────
+app.post('/api/followup', async (req, res) => {
+  const { questionId, answer, answers, followUpCount } = req.body;
+  const { adj = '', example1 = '' } = answers || {};
+
+  // adj never needs follow-up (one word is perfect)
+  if (questionId === 'adj') return res.json({ sufficient: true });
+
+  // Max follow-up counts per question
+  const maxCounts = { example1: 3, reason: 1, feeling: 1, now: 1 };
+  const max = maxCounts[questionId] ?? 1;
+  if ((followUpCount || 0) >= max) return res.json({ sufficient: true });
+
+  const prompts = {
+    reason: `
+A Japanese English learner described their weekend as "${adj}".
+Their reason for feeling that way: "${answer}"
+
+Is this reason specific enough for a natural English PREP speech?
+- Sufficient: gives a clear reason (e.g. "I could sleep in and relax", "I spent time with my family")
+- Insufficient: too vague (e.g. just "I relaxed", "it was good", single word)
+
+If insufficient, write ONE short, natural English follow-up question to get more detail.
+Return ONLY JSON — no markdown: {"sufficient": true} OR {"sufficient": false, "question": "..."}`,
+
+    example1: `
+A Japanese English learner's weekend was "${adj}".
+Their episode(s) so far: "${answer}"
+Follow-up questions asked so far: ${followUpCount || 0} (max 3)
+
+Goal: collect 2 specific episodes with enough detail for an 80-100 word speech.
+
+Evaluate:
+- If fewer than 2 distinct episodes → ask about a second one
+- If 2 episodes but very vague (e.g. "went out", "stayed home") → ask for one specific detail
+- If 2 episodes with reasonable detail → return sufficient: true
+
+Ask naturally and conversationally, like a friendly chat partner.
+Return ONLY JSON — no markdown: {"sufficient": true} OR {"sufficient": false, "question": "..."}`,
+
+    feeling: `
+A Japanese English learner described how their weekend activities felt: "${answer}"
+One or two words (e.g. "fun", "really nice") are perfectly fine for this question.
+Only return sufficient: false if the answer is completely empty or makes no sense.
+Return ONLY JSON: {"sufficient": true} OR {"sufficient": false, "question": "..."}`,
+
+    now: `
+A Japanese English learner described their mood heading into the new week: "${answer}"
+Context: they had a "${adj}" weekend doing "${example1}".
+A short phrase is fine. Only ask a follow-up if the answer is too vague to build a sentence from.
+Return ONLY JSON: {"sufficient": true} OR {"sufficient": false, "question": "..."}`,
+  };
+
+  const prompt = prompts[questionId];
+  if (!prompt) return res.json({ sufficient: true });
+
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 150,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const result = extractObject(msg.content[0].text);
+    res.json({
+      sufficient: result.sufficient !== false,
+      question: result.question || null,
+    });
+  } catch (err) {
+    console.error('[followup]', err.message);
+    res.json({ sufficient: true }); // fail gracefully → just proceed
+  }
+});
+
 // POST /api/speech ────────────────────────────────────
 app.post('/api/speech', async (req, res) => {
   const { adj, reason, example1, feeling, now } = req.body.answers;
@@ -117,29 +191,33 @@ Student's answers (may include Japanese — translate naturally into English):
 - How it felt     : "${feeling}"
 - Current mood    : "${now}"
 
-Write a natural spoken-English speech and return ONLY this JSON object
-(no markdown, no extra text):
+Write a natural spoken-English speech and return ONLY this JSON object (no markdown, no extra text):
 
 {
-  "point":      "2 sentences — My weekend was really [adj]. This is because [reason].",
-  "example":    "3–4 sentences — Describe the two episodes naturally. It was really [feeling]!",
-  "conclusion": "2 sentences — Overall, I had a [adj] weekend. Now I am [now]."
+  "point":      "2 sentences — My weekend was [adj]. This is because [reason].",
+  "example":    "3–4 sentences — Expand the two episodes into natural English. End with how it felt.",
+  "conclusion": "2 sentences — Overall, it was a [adj] weekend. Now I feel [now].",
+  "notes":      ["note1", "note2"]
 }
 
 Rules:
 - Translate any Japanese naturally to English
-- Expand the two episodes into natural English sentences (split them if written together)
-- Keep it conversational and natural (80–110 words total across all three fields)
-- Vary sentence structure slightly so it doesn't sound robotic`;
+- Expand vague or short answers into natural English sentences
+- Total word count across point + example + conclusion: 80–100 words
+- Vary sentence structure so it sounds natural when spoken
+- For the "notes" array: write in Japanese, listing ONLY significant inferences or creative additions you made
+  (e.g. "「本を読んだ」→ ミステリー小説として具体化しました"). Keep each note short.
+  If the student's answers were already clear and specific, return an empty array [].`;
 
   try {
     const msg = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 512,
+      max_tokens: 600,
       messages: [{ role: 'user', content: prompt }],
     });
-    const sections = extractObject(msg.content[0].text);
-    res.json({ sections });
+    const result = extractObject(msg.content[0].text);
+    const { notes, ...sections } = result;
+    res.json({ sections, notes: Array.isArray(notes) ? notes : [] });
   } catch (err) {
     console.error('[speech]', err.message);
     res.status(500).json({ error: 'Failed to generate speech' });
