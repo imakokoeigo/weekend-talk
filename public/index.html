@@ -410,7 +410,7 @@ async function fetchHintsInBackground(q) {
 }
 
 // ── INPUT ─────────────────────────────────────────────
-function appendInput(q) {
+function appendInput(q, translationHints = null) {
   const wrap = document.createElement('div');
   wrap.className = 'q-input'; wrap.id = 'qInput';
   wrap.style.setProperty('--sc', q.sc);
@@ -449,7 +449,9 @@ function appendInput(q) {
   hintsBlock.className = 'hints-block';
   hintsBlock.id = 'hintsBlock';
 
-  if (!q.needsAI && q.staticHints.length) {
+  if (translationHints) {
+    renderTranslations(hintsBlock, translationHints);
+  } else if (!q.needsAI && q.staticHints.length) {
     renderHints(hintsBlock, q.staticHints);
   } else if (q.needsAI) {
     hintsBlock.innerHTML = '<span class="hints-loading">参考例を生成中…</span>';
@@ -521,8 +523,13 @@ function isJapanese(text) {
 }
 
 async function handleJapanese(val) {
-  // Show Japanese as a "draft" bubble (gray, not final)
   const q = Qs[curQ];
+
+  // Remove current input card first
+  document.getElementById('qInput')?.remove();
+  pending = '';
+
+  // Show Japanese as a "draft" bubble (gray, not final)
   const wrap = document.createElement('div');
   wrap.className = 'msg user';
   wrap.innerHTML = `
@@ -533,15 +540,9 @@ async function handleJapanese(val) {
   chatEl().appendChild(wrap);
   scrollEnd();
 
-  // Clear input
-  const inp = document.querySelector('#qInput .txt-inp');
-  const sendBtn = document.querySelector('#qInput .send-btn');
-  if (inp) { inp.value = ''; }
-  if (sendBtn) sendBtn.disabled = true;
-  pending = '';
-
   // Fetch translation from server
   const t = showTyping();
+  let suggestions = [];
   try {
     const r = await fetch('/api/translate', {
       method: 'POST',
@@ -549,21 +550,19 @@ async function handleJapanese(val) {
       body: JSON.stringify({ text: val }),
     });
     const data = r.ok ? await r.json() : { suggestions: [] };
-    t.remove();
+    suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+  } catch { /* fail silently */ }
 
-    const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
-    if (suggestions.length) {
-      botMsg('英語ではこんな言い方ができますよ 😊<br><span style="font-size:13px;color:#999">参考にして、英語で入力してみてね！</span>');
-      const block = document.getElementById('hintsBlock');
-      if (block) renderTranslations(block, suggestions);
-    } else {
-      botMsg('英語で入力してみてください 😊');
-    }
-  } catch {
-    t.remove();
+  t.remove();
+
+  if (suggestions.length) {
+    botMsg('英語ではこんな言い方ができますよ 😊<br><span style="font-size:13px;color:#999">参考にして、英語で入力してみてね！</span>');
+  } else {
     botMsg('英語で入力してみてください 😊');
   }
-  if (inp) inp.focus();
+
+  // Re-show input card with translation suggestions as hints
+  appendInput(q, suggestions.length ? suggestions : null);
 }
 
 function renderTranslations(container, items) {
