@@ -148,6 +148,15 @@
     }
     .hints-loading { font-size: 12px; color: #ccc; }
 
+    /* ── JAPANESE DRAFT BUBBLE ── */
+    .bubble.user.ja-draft {
+      background: #e0e0e0; color: #888;
+      font-style: italic; border-bottom-right-radius: 4px;
+    }
+    .ja-note {
+      font-size: 11px; color: #bbb; margin-top: 3px; text-align: right;
+    }
+
     /* ── DRAFT SCREEN ── */
     .draft-screen {
       display: none; max-width: 620px; margin: 0 auto;
@@ -252,23 +261,23 @@ const Qs = [
     bot: '週末を一言で表すとどんな感じでしたか。<br><span style="font-size:13px;color:#999;font-weight:400">It was … に続けて言ってみましょう。</span>',
     staticHints: ['relaxing','fun','busy','productive','exciting',
                   'refreshing','peaceful','enjoyable','eventful','tiring','memorable'],
-    placeholder: 'relaxing / fun / peaceful …',
+    placeholder: 'e.g. relaxing / fun / peaceful',
     multiline: false,
   },
   {
-    id: 'reason', needsAI: true, lang: 'ja-JP',
+    id: 'reason', needsAI: true, lang: 'en-US',
     sc: '#5BAD6F', cl: '#A8DAAF', cbg: '#EDFAF1',
     bot: 'なぜそう思ったのか、理由を一言で言うと？',
     staticHints: [],
-    placeholder: '例: I was able to relax / 友達と過ごせたから',
+    placeholder: 'e.g. I was able to relax / I spent time with friends',
     multiline: false,
   },
   {
-    id: 'example1', needsAI: true, lang: 'ja-JP',
+    id: 'example1', needsAI: true, lang: 'en-US',
     sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
     bot: '具体的なエピソードを二つ教えてください。',
     staticHints: [],
-    placeholder: '例：土曜の午後は友達とカフェでランチ。日曜は家で映画を観た。',
+    placeholder: 'e.g. I had lunch with a friend on Saturday. On Sunday, I watched a movie at home.',
     multiline: true,
   },
   {
@@ -276,15 +285,15 @@ const Qs = [
     sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
     bot: 'その時の感想を教えてください。',
     staticHints: [],
-    placeholder: '例: delicious / amazing / 楽しかった',
+    placeholder: 'e.g. delicious / really relaxing / amazing',
     multiline: false,
   },
   {
-    id: 'now', needsAI: true, lang: 'ja-JP',
+    id: 'now', needsAI: true, lang: 'en-US',
     sc: '#9B59B6', cl: '#C89FD6', cbg: '#F7F0FF',
     bot: '新しい1週間をどんな気持ちで迎えていますか。',
     staticHints: [],
-    placeholder: '例: feeling refreshed / やる気満々',
+    placeholder: 'e.g. feeling refreshed / ready to take on the week',
     multiline: false,
   },
 ];
@@ -295,7 +304,7 @@ let curQ = 0;
 let pending = '';
 
 // ── BOOT ─────────────────────────────────────────────
-function init() {
+async function init() {
   buildDots();
   chatEl().innerHTML = '';
   botMsg('こんにちは！🎉 週末の英語スピーチを一緒に作りましょう。<br>質問に答えながらスピーチを完成させていきます！');
@@ -304,7 +313,9 @@ function init() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ questionId: '_ping', answers: {} }),
   }).catch(() => {});
-  setTimeout(() => nextQ(0), 700);
+  await wait(600);
+  botMsg('回答はすべて<strong>英語</strong>でお願いします 🇬🇧<br><span style="font-size:13px;color:#999">英語での言い方がわからなければ日本語でOK！<br>英語フレーズを提案するので、それを参考に英語で入力してね。</span>');
+  setTimeout(() => nextQ(0), 900);
 }
 
 // ── DOTS ─────────────────────────────────────────────
@@ -504,10 +515,76 @@ function makeVoiceBtn(inp, q) {
   return btn;
 }
 
+// ── JAPANESE DETECTION ────────────────────────────────
+function isJapanese(text) {
+  return /[぀-ヿ㐀-䶿一-鿿]/.test(text);
+}
+
+async function handleJapanese(val) {
+  // Show Japanese as a "draft" bubble (gray, not final)
+  const q = Qs[curQ];
+  const wrap = document.createElement('div');
+  wrap.className = 'msg user';
+  wrap.innerHTML = `
+    <div style="text-align:right">
+      <div class="bubble user ja-draft">${esc(val)}</div>
+      <div class="ja-note">日本語を検出 → 英語フレーズを提案します</div>
+    </div>`;
+  chatEl().appendChild(wrap);
+  scrollEnd();
+
+  // Clear input
+  const inp = document.querySelector('#qInput .txt-inp');
+  const sendBtn = document.querySelector('#qInput .send-btn');
+  if (inp) { inp.value = ''; }
+  if (sendBtn) sendBtn.disabled = true;
+  pending = '';
+
+  // Fetch translation from server
+  const t = showTyping();
+  try {
+    const r = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: val }),
+    });
+    const data = r.ok ? await r.json() : { suggestions: [] };
+    t.remove();
+
+    const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+    if (suggestions.length) {
+      botMsg('英語ではこんな言い方ができますよ 😊<br><span style="font-size:13px;color:#999">参考にして、英語で入力してみてね！</span>');
+      const block = document.getElementById('hintsBlock');
+      if (block) renderTranslations(block, suggestions);
+    } else {
+      botMsg('英語で入力してみてください 😊');
+    }
+  } catch {
+    t.remove();
+    botMsg('英語で入力してみてください 😊');
+  }
+  if (inp) inp.focus();
+}
+
+function renderTranslations(container, items) {
+  container.innerHTML = `
+    <div class="hints-label" style="color:#5BAD6F">英語フレーズ例</div>
+    <div class="hints-list">
+      ${items.map(w => `<span class="hint-item" style="background:#EDFAF1;color:#5BAD6F">${esc(w)}</span>`).join('')}
+    </div>`;
+}
+
 // ── SUBMIT ────────────────────────────────────────────
 async function submit() {
   if (!pending) return;
   const val = pending.trim();
+
+  // If Japanese detected, suggest English instead
+  if (isJapanese(val)) {
+    await handleJapanese(val);
+    return;
+  }
+
   answers[Qs[curQ].id] = val;
   document.getElementById('qInput')?.remove();
   userMsg(val);

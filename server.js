@@ -76,6 +76,33 @@ app.post('/api/chips', async (req, res) => {
   }
 });
 
+// POST /api/translate ─────────────────────────────────
+app.post('/api/translate', async (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.json({ suggestions: [] });
+
+  const prompt = `
+A Japanese English learner typed this in Japanese: "${text}"
+Generate 3 natural English phrases they could say instead,
+suitable for a short spoken speech about their weekend.
+Keep each phrase short and conversational (under 12 words).
+Return ONLY a valid JSON array of 3 strings. No explanation.
+Example: ["it was really fun", "I had such a great time", "I really enjoyed it"]`;
+
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const suggestions = extractArray(msg.content[0].text);
+    res.json({ suggestions });
+  } catch (err) {
+    console.error('[translate]', err.message);
+    res.json({ suggestions: [] });
+  }
+});
+
 // POST /api/speech ────────────────────────────────────
 app.post('/api/speech', async (req, res) => {
   const { adj, reason, example1, feeling, now } = req.body.answers;
