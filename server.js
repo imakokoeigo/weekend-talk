@@ -54,11 +54,17 @@ Return ONLY a valid JSON array. Example: ["ready for a new week", "feeling refre
 }
 
 function myFavoriteChipPrompt(questionId, answers) {
-  const { item = '', episode = '' } = answers;
+  const { genre = '', item = '', episode = '' } = answers;
   const map = {
+    item: `
+A Japanese English learner likes the genre "${genre}".
+Generate 8 specific examples within "${genre}" they might enjoy. Keep each 1–4 words.
+Return ONLY a valid JSON array.
+Example (for music): ["jazz piano", "classical guitar", "K-pop", "bossa nova"]`,
+
     feeling: `
-A Japanese English learner loves "${item}".
-Generate 6 English words or short phrases (1–3 words) describing how "${item}" makes them feel.
+A Japanese English learner loves "${item}" (genre: "${genre}").
+Generate 6 English words or short phrases (1–3 words) describing how it makes them feel.
 Return ONLY a valid JSON array. Example: ["relaxed", "energized", "so happy", "inspired"]`,
 
     habit: `
@@ -154,7 +160,7 @@ function buildFollowupPrompt(templateId, questionId, answer, answers, cnt) {
   // Max follow-up counts
   const maxCounts = {
     weekend:    { reason: 1, example1: 3, feeling: 1, now: 1 },
-    myFavorite: { feeling: 1, habit: 1, episode: 3, impression: 1, future: 1 },
+    myFavorite: { genre: 2, item: 2, feeling: 1, habit: 1, episode: 3, impression: 1, future: 1 },
   };
   const max = (maxCounts[templateId] || {})[questionId] ?? 1;
   if (cnt >= max) return '';
@@ -182,6 +188,15 @@ If < 2 episodes → ask for a second. If vague → ask for detail. If sufficient
 
   if (templateId === 'myFavorite') {
     const prompts = {
+      genre: `Student was asked "What genre do you like?" and answered: "${answer}"
+Is this a reasonable genre or category? (music, books, sports, cooking, art, movies, fashion, travel, etc. are all fine)
+Only ask again if the answer is completely off-topic, nonsensical, or unrelated to a hobby/interest.
+A broad or specific answer is both acceptable.${suffix}`,
+
+      item: `Genre: "${genre}". Specific favorite: "${answer}"
+Does "${answer}" make sense as a specific thing within "${genre}"?
+Only ask if clearly off-topic or if they just repeated the genre without being more specific.${suffix}`,
+
       feeling: `Favorite thing: "${item}". Feeling described as: "${answer}". One or two words is fine.${suffix}`,
 
       habit: `Favorite: "${item}". How/when/where they enjoy it: "${answer}".
@@ -222,21 +237,22 @@ app.post('/api/speech', async (req, res) => {
 
 function buildSpeechPrompt(templateId, answers) {
   if (templateId === 'myFavorite') {
-    const { item, feeling, habit, episode, impression, future } = answers;
+    const { genre, item, feeling, habit, episode, impression, future } = answers;
     return `
 You help a Japanese English learner write a PREP-structure "My Favorite" speech.
 
 Student's answers (translate Japanese naturally):
-- Favorite thing : "${item}"
-- How it feels   : "${feeling}"
-- How/when/where : "${habit}"
-- Episode        : "${episode}"
-- Impression     : "${impression}"
-- Future goal    : "${future}"
+- Genre (❶)      : "${genre}"
+- Specific thing (❷) : "${item}"
+- How it feels (❸)   : "${feeling}"
+- How/when/where (❹❺❻): "${habit}"
+- Episode (❼❽)   : "${episode}"
+- Impression (❾) : "${impression}"
+- Future goal (❿): "${future}"
 
 Return ONLY this JSON (no markdown):
 {
-  "point":      "3 sentences — For today's topic, I chose \\"My favorite\\". [Genre] is [item]. Actually, I'm really into it.",
+  "point":      "3 sentences — For today's topic, I chose \\"My favorite\\". My favorite [genre] is [item]. Actually, I'm really into it.",
   "reason":     "1 sentence — The reason I like it is that it makes me feel [feeling].",
   "example":    "3 sentences — I usually enjoy [item] [habit]. For example, [episode]. It was really [impression]!",
   "conclusion": "2 sentences — That's why [item] is my favorite. In the future, I want to [future].",

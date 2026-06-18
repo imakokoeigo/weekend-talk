@@ -374,11 +374,19 @@ const TEMPLATES = {
     ],
     questions: [
       {
-        id: 'item', needsAI: false, lang: 'en-US',
+        id: 'genre', needsAI: false, lang: 'en-US',
         sc: '#E74C8B', cl: '#F5A7C7', cbg: '#FFF0F7',
-        bot: '好きなジャンルと、具体的に何が好きか教えてください。<br><span style="font-size:13px;color:#999">e.g. music → jazz / books → mystery novels</span>',
-        staticHints: ['jazz music','mystery novels','cooking','soccer','photography','watercolor','hiking','coffee','anime','fashion','yoga'],
-        placeholder: 'e.g. jazz music / mystery novels / cooking',
+        bot: 'どんなジャンルが好きですか？',
+        staticHints: ['music','books','sports','cooking','art','movies','fashion','travel','photography','games','yoga','anime'],
+        placeholder: 'e.g. music / books / cooking / sports',
+        multiline: false,
+      },
+      {
+        id: 'item', needsAI: true, lang: 'en-US',
+        sc: '#E74C8B', cl: '#F5A7C7', cbg: '#FFF0F7',
+        bot: '具体的に何が好きですか？',
+        staticHints: [],
+        placeholder: 'e.g. jazz piano / mystery novels / pasta',
         multiline: false,
       },
       {
@@ -694,8 +702,8 @@ async function submit() {
   document.getElementById('qInput')?.remove();
   userMsg(val);
 
-  // Q with needsAI:false (adj, item) never need follow-up
-  if (!Qs[curQ].needsAI) { saveAndNext(accumulated); return; }
+  // adj (Weekend Q1) never needs follow-up — one word is always fine
+  if (Qs[curQ].id === 'adj') { saveAndNext(accumulated); return; }
 
   await checkAndProceed(accumulated);
 }
