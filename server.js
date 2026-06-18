@@ -9,71 +9,97 @@ app.use('/image', express.static(path.join(__dirname, 'image')));
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// ── JSON extraction (handles markdown code fences) ───
 function extractArray(text) {
   const m = text.match(/\[[\s\S]*?\]/);
   return m ? JSON.parse(m[0]) : JSON.parse(text.trim());
 }
-
 function extractObject(text) {
   const m = text.match(/\{[\s\S]*\}/);
   return m ? JSON.parse(m[0]) : JSON.parse(text.trim());
 }
 
-// ── Chip generation prompts ──────────────────────────
-function chipPrompt(questionId, answers) {
-  const { adj, reason, example1 } = answers;
+// ── CHIP PROMPTS ──────────────────────────────────────
+function chipPrompt(templateId, questionId, answers) {
+  if (templateId === 'weekend') return weekendChipPrompt(questionId, answers);
+  if (templateId === 'myFavorite') return myFavoriteChipPrompt(questionId, answers);
+  return '';
+}
 
+function weekendChipPrompt(questionId, answers) {
+  const { adj, reason, example1 } = answers;
   const map = {
     reason: `
 A Japanese English learner had a "${adj}" weekend.
 Generate 6 short English phrases (5–10 words, first person, past tense)
-that explain WHY their weekend felt "${adj}".
-Return ONLY a valid JSON array of strings. No explanation.
-Example format: ["I was able to sleep in", "I had no plans at all"]`,
+explaining WHY their weekend felt "${adj}".
+Return ONLY a valid JSON array. Example: ["I was able to sleep in", "I had no plans"]`,
 
     example1: `
 Weekend felt "${adj}" because: "${reason}".
-Generate 6 specific English phrases for things this person might have done over the weekend — include two different types of activities.
-Each phrase starts with a past-tense verb, 4–8 words.
-Return ONLY a valid JSON array of strings.
-Example: ["went to a café with a friend", "stayed home watching Netflix"]`,
+Generate 6 English phrases for things this person might have done — two different activity types.
+Each starts with a past-tense verb, 4–8 words.
+Return ONLY a valid JSON array. Example: ["went to a café with a friend", "stayed home watching Netflix"]`,
 
     feeling: `
 Weekend activities: "${example1}".
-Generate 6 English adjectives or very short phrases (1–3 words)
-describing how these activities felt.
-Return ONLY a valid JSON array of strings.
-Example: ["delicious", "so relaxing", "really fun"]`,
+Generate 6 English adjectives or short phrases (1–3 words) describing how these felt.
+Return ONLY a valid JSON array. Example: ["delicious", "so relaxing", "really fun"]`,
 
     now: `
 The user had a "${adj}" weekend doing: "${example1}".
-Generate 6 short English phrases (5–10 words) about how they feel
-heading into the new week.
-Return ONLY a valid JSON array of strings.
-Example: ["ready for a new week", "feeling refreshed and motivated"]`,
+Generate 6 short English phrases (5–10 words) about how they feel heading into the new week.
+Return ONLY a valid JSON array. Example: ["ready for a new week", "feeling refreshed and motivated"]`,
   };
+  return map[questionId] || '';
+}
 
+function myFavoriteChipPrompt(questionId, answers) {
+  const { item = '', episode = '' } = answers;
+  const map = {
+    feeling: `
+A Japanese English learner loves "${item}".
+Generate 6 English words or short phrases (1–3 words) describing how "${item}" makes them feel.
+Return ONLY a valid JSON array. Example: ["relaxed", "energized", "so happy", "inspired"]`,
+
+    habit: `
+A Japanese English learner loves "${item}".
+Generate 5 English phrases (under 8 words) describing when/where/with whom they enjoy it.
+Return ONLY a valid JSON array. Example: ["every weekend at home alone", "with friends at a café"]`,
+
+    episode: `
+A Japanese English learner loves "${item}".
+Generate 5 English phrases for specific experiences they might have had.
+Start each with a time reference + past tense verb.
+Return ONLY a valid JSON array. Example: ["last month, attended a live concert", "last year, visited a gallery in Tokyo"]`,
+
+    impression: `
+A Japanese English learner had this experience with "${item}": "${episode}".
+Generate 6 English adjectives or short phrases (1–3 words) describing how it felt.
+Return ONLY a valid JSON array. Example: ["amazing", "unforgettable", "truly inspiring"]`,
+
+    future: `
+A Japanese English learner loves "${item}".
+Generate 5 English phrases about future aspirations related to "${item}". Start each with a verb.
+Return ONLY a valid JSON array. Example: ["visit a jazz festival in New York", "learn to play the guitar"]`,
+  };
   return map[questionId] || '';
 }
 
 // POST /api/chips ─────────────────────────────────────
 app.post('/api/chips', async (req, res) => {
-  const { questionId, answers } = req.body;
-  const prompt = chipPrompt(questionId, answers);
+  const { templateId, questionId, answers } = req.body;
+  const prompt = chipPrompt(templateId, questionId, answers || {});
   if (!prompt) return res.json({ chips: [] });
 
   try {
     const msg = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 300,
+      model: 'claude-haiku-4-5-20251001', max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     });
-    const chips = extractArray(msg.content[0].text);
-    res.json({ chips });
+    res.json({ chips: extractArray(msg.content[0].text) });
   } catch (err) {
     console.error('[chips]', err.message);
-    res.status(500).json({ chips: [] });
+    res.json({ chips: [] });
   }
 });
 
@@ -84,20 +110,17 @@ app.post('/api/translate', async (req, res) => {
 
   const prompt = `
 A Japanese English learner typed this in Japanese: "${text}"
-Generate 3 natural English phrases they could say instead,
-suitable for a short spoken speech about their weekend.
+Generate 3 natural English phrases they could say instead, suitable for a short spoken speech.
 Keep each phrase short and conversational (under 12 words).
-Return ONLY a valid JSON array of 3 strings. No explanation.
+Return ONLY a valid JSON array of 3 strings.
 Example: ["it was really fun", "I had such a great time", "I really enjoyed it"]`;
 
   try {
     const msg = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 200,
+      model: 'claude-haiku-4-5-20251001', max_tokens: 200,
       messages: [{ role: 'user', content: prompt }],
     });
-    const suggestions = extractArray(msg.content[0].text);
-    res.json({ suggestions });
+    res.json({ suggestions: extractArray(msg.content[0].text) });
   } catch (err) {
     console.error('[translate]', err.message);
     res.json({ suggestions: [] });
@@ -106,114 +129,86 @@ Example: ["it was really fun", "I had such a great time", "I really enjoyed it"]
 
 // POST /api/followup ──────────────────────────────────
 app.post('/api/followup', async (req, res) => {
-  const { questionId, answer, answers, followUpCount } = req.body;
-  const { adj = '', example1 = '' } = answers || {};
+  const { templateId, questionId, answer, answers, followUpCount } = req.body;
+  const cnt = followUpCount || 0;
 
-  // adj never needs follow-up (one word is perfect)
-  if (questionId === 'adj') return res.json({ sufficient: true });
-
-  // Max follow-up counts per question
-  const maxCounts = { example1: 3, reason: 1, feeling: 1, now: 1 };
-  const max = maxCounts[questionId] ?? 1;
-  if ((followUpCount || 0) >= max) return res.json({ sufficient: true });
-
-  const prompts = {
-    reason: `
-A Japanese English learner described their weekend as "${adj}".
-Their reason: "${answer}"
-
-Is this reason specific enough for a PREP speech?
-- Sufficient: clear reason (e.g. "I could sleep in", "I spent time with my family")
-- Insufficient: too vague (e.g. single word, "it was good")
-
-If insufficient, write ONE short follow-up question IN JAPANESE to get more detail.
-Return ONLY JSON — no markdown: {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`,
-
-    example1: `
-A Japanese English learner's weekend was "${adj}".
-Their episode(s) so far: "${answer}"
-Follow-up questions asked so far: ${followUpCount || 0} (max 3)
-
-Goal: collect 2 specific episodes with enough detail for an 80-100 word speech.
-
-Evaluate:
-- If fewer than 2 distinct episodes → ask about a second one
-- If 2 episodes but very vague → ask for one specific detail
-- If 2 episodes with reasonable detail → return sufficient: true
-
-Write the follow-up question IN JAPANESE, conversationally and friendly.
-Return ONLY JSON — no markdown: {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`,
-
-    feeling: `
-A Japanese English learner described how their weekend felt: "${answer}"
-One or two words are perfectly fine. Only return sufficient: false if completely empty or nonsensical.
-If asking a follow-up, write it IN JAPANESE.
-Return ONLY JSON: {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`,
-
-    now: `
-A Japanese English learner's mood heading into the new week: "${answer}"
-Context: "${adj}" weekend, did "${example1}".
-A short phrase is fine. Only ask if too vague to build a sentence from.
-If asking a follow-up, write it IN JAPANESE.
-Return ONLY JSON: {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`,
-  };
-
-  const prompt = prompts[questionId];
+  const prompt = buildFollowupPrompt(templateId, questionId, answer, answers || {}, cnt);
   if (!prompt) return res.json({ sufficient: true });
 
   try {
     const msg = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 150,
+      model: 'claude-haiku-4-5-20251001', max_tokens: 150,
       messages: [{ role: 'user', content: prompt }],
     });
     const result = extractObject(msg.content[0].text);
-    res.json({
-      sufficient: result.sufficient !== false,
-      question: result.question || null,
-    });
+    res.json({ sufficient: result.sufficient !== false, question: result.question || null });
   } catch (err) {
     console.error('[followup]', err.message);
-    res.json({ sufficient: true }); // fail gracefully → just proceed
+    res.json({ sufficient: true });
   }
 });
 
-// POST /api/speech ────────────────────────────────────
-app.post('/api/speech', async (req, res) => {
-  const { adj, reason, example1, feeling, now } = req.body.answers;
+function buildFollowupPrompt(templateId, questionId, answer, answers, cnt) {
+  const { adj = '', item = '', episode = '' } = answers;
 
-  const prompt = `
-You help a Japanese English learner write a PREP-structure "Weekend Talk" speech.
+  // Max follow-up counts
+  const maxCounts = {
+    weekend:    { reason: 1, example1: 3, feeling: 1, now: 1 },
+    myFavorite: { feeling: 1, habit: 1, episode: 3, impression: 1, future: 1 },
+  };
+  const max = (maxCounts[templateId] || {})[questionId] ?? 1;
+  if (cnt >= max) return '';
 
-Student's answers (may include Japanese — translate naturally into English):
-- Weekend feeling : "${adj}"
-- Reason          : "${reason}"
-- Two episodes    : "${example1}"
-- How it felt     : "${feeling}"
-- Current mood    : "${now}"
+  const suffix = `\nFollow-up questions asked so far: ${cnt} (max ${max}).
+${cnt >= max ? 'Return {"sufficient": true} — we have enough.' : ''}
+Write follow-up question IN JAPANESE, natural and friendly.
+Return ONLY JSON (no markdown): {"sufficient": true} OR {"sufficient": false, "question": "日本語の質問"}`;
 
-Write a natural spoken-English speech and return ONLY this JSON object (no markdown, no extra text):
+  if (templateId === 'weekend') {
+    const prompts = {
+      reason: `Weekend was "${adj}". Reason given: "${answer}".
+Is this specific enough? (vague = single word / "it was good". clear = actual reason with detail.)${suffix}`,
 
-{
-  "point":      "2 sentences — My weekend was [adj]. This is because [reason].",
-  "example":    "3–4 sentences — Expand the two episodes into natural English. End with how it felt.",
-  "conclusion": "2 sentences — Overall, it was a [adj] weekend. Now I feel [now].",
-  "notes":      ["note1", "note2"]
+      example1: `Weekend was "${adj}". Episodes so far: "${answer}".
+Goal: 2 specific episodes with enough detail for 80-100 words.
+If < 2 episodes → ask for a second. If vague → ask for detail. If sufficient → return true.${suffix}`,
+
+      feeling: `Feeling described as: "${answer}". One or two words is fine. Only ask if empty/nonsensical.${suffix}`,
+
+      now: `Mood heading into new week: "${answer}". Context: "${adj}" weekend. Short phrase is fine.${suffix}`,
+    };
+    return prompts[questionId] || '';
+  }
+
+  if (templateId === 'myFavorite') {
+    const prompts = {
+      feeling: `Favorite thing: "${item}". Feeling described as: "${answer}". One or two words is fine.${suffix}`,
+
+      habit: `Favorite: "${item}". How/when/where they enjoy it: "${answer}".
+Is this specific enough to build a sentence? (needs at least one of: when / with whom / where)${suffix}`,
+
+      episode: `Favorite: "${item}". Episode so far: "${answer}".
+Goal: a specific episode with time reference + what they did, enough for 2-3 sentences.
+If missing time ref → ask when. If vague activity → ask what exactly. If sufficient → return true.${suffix}`,
+
+      impression: `Impression of experience: "${answer}". One or two words is fine.${suffix}`,
+
+      future: `Future aspiration: "${answer}". Needs a specific activity (not just "I want to enjoy it more").${suffix}`,
+    };
+    return prompts[questionId] || '';
+  }
+
+  return '';
 }
 
-Rules:
-- Translate any Japanese naturally to English
-- Expand vague or short answers into natural English sentences
-- Total word count across point + example + conclusion: 80–100 words
-- Vary sentence structure so it sounds natural when spoken
-- For the "notes" array: write in Japanese, listing ONLY significant inferences or creative additions you made
-  (e.g. "「本を読んだ」→ ミステリー小説として具体化しました"). Keep each note short.
-  If the student's answers were already clear and specific, return an empty array [].`;
+// POST /api/speech ────────────────────────────────────
+app.post('/api/speech', async (req, res) => {
+  const { templateId, answers } = req.body;
+  const prompt = buildSpeechPrompt(templateId, answers);
 
   try {
     const msg = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 600,
+      model: 'claude-sonnet-4-6', max_tokens: 600,
       messages: [{ role: 'user', content: prompt }],
     });
     const result = extractObject(msg.content[0].text);
@@ -225,5 +220,61 @@ Rules:
   }
 });
 
+function buildSpeechPrompt(templateId, answers) {
+  if (templateId === 'myFavorite') {
+    const { item, feeling, habit, episode, impression, future } = answers;
+    return `
+You help a Japanese English learner write a PREP-structure "My Favorite" speech.
+
+Student's answers (translate Japanese naturally):
+- Favorite thing : "${item}"
+- How it feels   : "${feeling}"
+- How/when/where : "${habit}"
+- Episode        : "${episode}"
+- Impression     : "${impression}"
+- Future goal    : "${future}"
+
+Return ONLY this JSON (no markdown):
+{
+  "point":      "3 sentences — For today's topic, I chose \\"My favorite\\". [Genre] is [item]. Actually, I'm really into it.",
+  "reason":     "1 sentence — The reason I like it is that it makes me feel [feeling].",
+  "example":    "3 sentences — I usually enjoy [item] [habit]. For example, [episode]. It was really [impression]!",
+  "conclusion": "2 sentences — That's why [item] is my favorite. In the future, I want to [future].",
+  "notes":      ["Japanese note about inference made"]
+}
+
+Rules:
+- Keep opener fixed: 'For today\\'s topic, I chose "My favorite".'
+- Translate Japanese naturally; expand vague answers
+- Total: 80–100 words across all four sections
+- notes: Japanese, only list significant inferences. Empty array [] if answers were clear.`;
+  }
+
+  // Default: weekend
+  const { adj, reason, example1, feeling, now } = answers;
+  return `
+You help a Japanese English learner write a PREP-structure "Weekend Talk" speech.
+
+Student's answers (translate Japanese naturally):
+- Weekend feeling : "${adj}"
+- Reason          : "${reason}"
+- Two episodes    : "${example1}"
+- How it felt     : "${feeling}"
+- Current mood    : "${now}"
+
+Return ONLY this JSON (no markdown):
+{
+  "point":      "2 sentences — My weekend was [adj]. This is because [reason].",
+  "example":    "3–4 sentences — Expand the two episodes naturally. It was really [feeling]!",
+  "conclusion": "2 sentences — Overall, it was a [adj] weekend. Now I feel [now].",
+  "notes":      ["Japanese note about inference made"]
+}
+
+Rules:
+- Translate Japanese naturally; expand vague answers
+- Total: 80–100 words across all three sections
+- notes: Japanese, only list significant inferences. Empty array [] if answers were clear.`;
+}
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Weekend Talk running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Speech Builder running on port ${PORT}`));

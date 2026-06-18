@@ -3,33 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weekend Talk</title>
+  <title>Speech Builder</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
                    'Hiragino Sans', 'Yu Gothic UI', sans-serif;
-      background: #f0f2f5;
-      min-height: 100vh;
+      background: #f0f2f5; min-height: 100vh;
     }
+
+    /* ── HOME SCREEN ── */
+    .home-screen {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .home-content { text-align: center; max-width: 480px; width: 100%; }
+    .home-logo { font-size: 50px; margin-bottom: 10px; }
+    .home-title { font-size: 24px; font-weight: 900; color: #222; margin-bottom: 5px; }
+    .home-sub { font-size: 13px; color: #bbb; margin-bottom: 30px; }
+    .tpl-cards { display: flex; gap: 12px; }
+    .tpl-card {
+      flex: 1; padding: 22px 14px; border-radius: 18px;
+      background: white; border: 2px solid #eaeaea;
+      cursor: pointer; text-align: center; font-family: inherit;
+      transition: all .2s; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .tpl-card:hover {
+      border-color: #667eea; transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(102,126,234,0.18);
+    }
+    .tpl-icon { font-size: 30px; margin-bottom: 8px; }
+    .tpl-name { font-size: 14px; font-weight: 800; color: #222; margin-bottom: 4px; }
+    .tpl-desc { font-size: 11.5px; color: #aaa; }
 
     /* ── HEADER ── */
     .hdr {
-      background: white;
-      padding: 13px 18px;
+      background: white; padding: 13px 18px;
       border-bottom: 1px solid #eaeaea;
       position: sticky; top: 0; z-index: 20;
       display: flex; align-items: center; justify-content: space-between;
     }
     .hdr-title { font-size: 16px; font-weight: 800; color: #222; }
     .hdr-sub   { font-size: 11px; color: #bbb; margin-top: 1px; }
-
     .dots { display: flex; gap: 7px; align-items: center; }
     .dot {
-      width: 9px; height: 9px; border-radius: 50%;
-      background: #e0e0e0;
-      transition: background 0.3s, transform 0.3s;
+      width: 9px; height: 9px; border-radius: 50%; background: #e0e0e0;
+      transition: background .3s, transform .3s;
     }
     .dot.done   { background: #c8c8c8; }
     .dot.active { background: var(--sc); transform: scale(1.35); }
@@ -41,13 +61,10 @@
     .msg { display: flex; margin-bottom: 12px; align-items: flex-end; gap: 8px; }
     .msg.bot  { flex-direction: row; }
     .msg.user { flex-direction: row-reverse; }
-
     .avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: #f0f0f0;
+      width: 34px; height: 34px; border-radius: 50%; background: #f0f0f0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 15px; flex-shrink: 0;
-      overflow: hidden;
+      font-size: 15px; flex-shrink: 0; overflow: hidden;
     }
     .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
     .bubble {
@@ -63,6 +80,10 @@
       background: var(--sc, #4A90D9); color: white;
       border-bottom-right-radius: 4px;
     }
+    .bubble.user.ja-draft {
+      background: #e0e0e0; color: #888; font-style: italic;
+    }
+    .ja-note { font-size: 11px; color: #bbb; margin-top: 3px; text-align: right; }
 
     /* ── TYPING ── */
     .typing-wrap { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
@@ -83,12 +104,10 @@
 
     /* ── INPUT CARD ── */
     .q-input {
-      margin-left: 38px; margin-bottom: 20px;
+      margin-left: 42px; margin-bottom: 20px;
       background: white; border-radius: 14px; padding: 14px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.07);
     }
-
-    /* input + voice + send row */
     .inp-row { display: flex; gap: 8px; align-items: flex-end; }
     .inp-wrap { flex: 1; }
     .txt-inp {
@@ -99,17 +118,14 @@
       color: #333; background: white; resize: none;
     }
     .txt-inp:focus { border-color: var(--sc, #4A90D9); }
-
-    /* voice button */
     .voice-btn {
       padding: 9px 11px; border-radius: 10px;
       border: 2px solid #e5e5e5; background: white;
       font-size: 16px; cursor: pointer; flex-shrink: 0;
-      transition: all .15s; align-self: flex-end;
-      line-height: 1;
+      transition: all .15s; align-self: flex-end; line-height: 1;
     }
-    .voice-btn:hover  { border-color: #bbb; }
-    .voice-btn.on     {
+    .voice-btn:hover { border-color: #bbb; }
+    .voice-btn.on {
       background: #ff4a4a; border-color: #ff4a4a; color: white;
       animation: vbpulse 1s ease-in-out infinite;
     }
@@ -117,32 +133,23 @@
       0%,100% { transform: scale(1); }
       50%      { transform: scale(1.12); }
     }
-
-    /* send button */
     .send-btn {
       padding: 9px 15px; border-radius: 10px;
       background: var(--sc, #4A90D9); color: white;
       border: none; font-size: 14px; font-weight: 700;
       cursor: pointer; font-family: inherit;
-      white-space: nowrap; align-self: flex-end;
-      transition: opacity .15s;
+      white-space: nowrap; align-self: flex-end; transition: opacity .15s;
     }
     .send-btn:disabled         { opacity: .35; cursor: not-allowed; }
     .send-btn:not(:disabled):hover { filter: brightness(1.08); }
 
-    /* ── HINTS (display only) ── */
-    .hints-block {
-      margin-top: 12px;
-      padding-top: 11px;
-      border-top: 1px solid #f0f0f0;
-    }
+    /* ── HINTS ── */
+    .hints-block { margin-top: 12px; padding-top: 11px; border-top: 1px solid #f0f0f0; }
     .hints-label {
       font-size: 10.5px; font-weight: 700; text-transform: uppercase;
       letter-spacing: .4px; color: #c0c0c0; margin-bottom: 7px;
     }
-    .hints-list {
-      display: flex; flex-wrap: wrap; gap: 6px;
-    }
+    .hints-list { display: flex; flex-wrap: wrap; gap: 6px; }
     .hint-item {
       padding: 5px 11px; border-radius: 16px;
       background: #f5f5f5; color: #aaa;
@@ -150,31 +157,16 @@
     }
     .hints-loading { font-size: 12px; color: #ccc; }
 
-    /* ── JAPANESE DRAFT BUBBLE ── */
-    .bubble.user.ja-draft {
-      background: #e0e0e0; color: #888;
-      font-style: italic; border-bottom-right-radius: 4px;
-    }
-    .ja-note {
-      font-size: 11px; color: #bbb; margin-top: 3px; text-align: right;
-    }
-
     /* ── DRAFT SCREEN ── */
     .draft-screen {
       display: none; max-width: 620px; margin: 0 auto;
       padding: 20px 14px 60px;
     }
     .draft-screen.show { display: block; }
-
     .draft-title { font-size: 17px; font-weight: 800; color: #222; margin-bottom: 3px; }
     .draft-sub   { font-size: 12px; color: #aaa; margin-bottom: 14px; }
-
     .prep-tags { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
-    .ptag {
-      padding: 4px 10px; border-radius: 20px;
-      font-size: 11px; font-weight: 700; letter-spacing: .3px;
-    }
-
+    .ptag { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .3px; }
     .draft-box {
       background: white; border: 2px solid #e5e5e5; border-radius: 14px;
       overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06);
@@ -184,8 +176,7 @@
     .dsec-label {
       width: 36px; flex-shrink: 0;
       display: flex; align-items: flex-start; justify-content: center;
-      padding-top: 14px;
-      font-size: 12px; font-weight: 900; letter-spacing: .3px;
+      padding-top: 14px; font-size: 12px; font-weight: 900; letter-spacing: .3px;
     }
     textarea.dsec-text {
       flex: 1; padding: 12px 14px 12px 0;
@@ -193,20 +184,7 @@
       font-size: 15px; font-family: inherit; line-height: 1.85;
       color: #222; resize: none; background: transparent; overflow: hidden;
     }
-
     .draft-tip { font-size: 12px; color: #aaa; margin: 10px 0 18px; }
-
-    .draft-btns { display: flex; gap: 9px; }
-    .btn-copy, .btn-restart {
-      flex: 1; padding: 13px; border-radius: 12px;
-      font-size: 14px; font-weight: 700;
-      cursor: pointer; font-family: inherit; transition: all .15s;
-    }
-    .btn-copy    { background: white; border: 2px solid #e0e0e0; color: #555; }
-    .btn-copy:hover { border-color: #bbb; }
-    .btn-restart { background: #667eea; color: white; border: none; }
-    .btn-restart:hover { background: #5a6fd6; }
-
     .btn-speak {
       width: 100%; padding: 13px; border-radius: 12px;
       font-size: 14px; font-weight: 700;
@@ -219,8 +197,16 @@
       background: #fff0f0; border-color: #ff4a4a; color: #ff4a4a;
       animation: vbpulse 1.4s ease-in-out infinite;
     }
-
-    /* ── CHAT BACK BUTTON ── */
+    .draft-btns { display: flex; gap: 9px; }
+    .btn-copy, .btn-restart {
+      flex: 1; padding: 13px; border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .btn-copy    { background: white; border: 2px solid #e0e0e0; color: #555; }
+    .btn-copy:hover { border-color: #bbb; }
+    .btn-restart { background: #667eea; color: white; border: none; }
+    .btn-restart:hover { background: #5a6fd6; }
     .btn-chat-back {
       display: inline-flex; align-items: center; gap: 5px;
       padding: 7px 14px; border-radius: 20px;
@@ -229,17 +215,9 @@
       font-family: inherit; transition: all .15s; margin-bottom: 18px;
     }
     .btn-chat-back:hover { border-color: #bbb; color: #555; }
-
-    /* ── DRAFT DIVIDER ── */
-    .draft-divider {
-      max-width: 620px; margin: 0 auto 0;
-      padding: 0 14px;
-      display: none;
-    }
+    .draft-divider { max-width: 620px; margin: 0 auto; padding: 0 14px; display: none; }
     .draft-divider.show { display: block; }
-    .draft-divider hr {
-      border: none; border-top: 2px dashed #e0e0e0; margin: 0;
-    }
+    .draft-divider hr { border: none; border-top: 2px dashed #e0e0e0; margin: 0; }
 
     /* ── TOAST ── */
     .toast {
@@ -253,34 +231,51 @@
 
     @media (max-width: 480px) {
       .bubble { max-width: 86%; }
+      .tpl-cards { flex-direction: column; }
       .draft-btns { flex-direction: column; }
     }
   </style>
 </head>
 <body>
 
-<div class="hdr">
+<!-- ── HOME SCREEN ── -->
+<div class="home-screen" id="homeScreen">
+  <div class="home-content">
+    <div class="home-logo">🗣️</div>
+    <h1 class="home-title">Speech Builder</h1>
+    <p class="home-sub">トピックを選んでスタート</p>
+    <div class="tpl-cards">
+      <button class="tpl-card" onclick="startTemplate('weekend')">
+        <div class="tpl-icon">🌅</div>
+        <div class="tpl-name">Weekend Talk</div>
+        <div class="tpl-desc">週末の出来事をスピーチ</div>
+      </button>
+      <button class="tpl-card" onclick="startTemplate('myFavorite')">
+        <div class="tpl-icon">❤️</div>
+        <div class="tpl-name">My Favorite</div>
+        <div class="tpl-desc">お気に入りのものをスピーチ</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<div class="hdr" id="hdr" style="display:none">
   <div>
-    <div class="hdr-title">Weekend Talk</div>
+    <div class="hdr-title" id="hdrTitle">Speech Builder</div>
     <div class="hdr-sub">英語スピーチ作成ツール</div>
   </div>
   <div class="dots" id="dots"></div>
 </div>
 
-<div class="chat" id="chat"></div>
+<div class="chat" id="chat" style="display:none"></div>
 
 <div class="draft-divider" id="draftDivider"><hr></div>
-
 <div class="draft-screen" id="draftScreen">
   <button class="btn-chat-back" onclick="scrollToChat()">← 会話を見る</button>
   <div class="draft-title">✨ ドラフト完成！</div>
   <div class="draft-sub">このまま使ってもOK。自由に書き直してね 📝</div>
-  <div class="prep-tags">
-    <span class="ptag" style="background:#EBF4FF;color:#4A90D9">P Point</span>
-    <span class="ptag" style="background:#EDFAF1;color:#5BAD6F">R Reason</span>
-    <span class="ptag" style="background:#FFF8EC;color:#E8960F">E Example</span>
-    <span class="ptag" style="background:#F7F0FF;color:#9B59B6">P Conclusion</span>
-  </div>
+  <div class="prep-tags" id="prepTags"></div>
   <div class="draft-box" id="draftBox"></div>
   <div class="draft-tip">💡 気に入らない表現は直接編集できます</div>
   <button class="btn-speak" id="speakBtn" onclick="speakDraft()">🔊 スピーチを読み上げる</button>
@@ -293,77 +288,187 @@
 <div class="toast" id="toast">コピーしました！</div>
 
 <script>
-// ── RILEY AVATAR ─────────────────────────────────────
+// ── AVATAR ────────────────────────────────────────────
 const AVATAR = '<div class="avatar"><img src="/image/AnsweringRiley.png" alt="Riley"></div>';
 
-// ── QUESTIONS ────────────────────────────────────────
-const Qs = [
-  {
-    id: 'adj', needsAI: false, lang: 'en-US',
-    sc: '#4A90D9', cl: '#BDD8F5', cbg: '#EBF4FF',
-    bot: '週末を一言で表すとどんな感じでしたか。<br><span style="font-size:13px;color:#999;font-weight:400">It was … に続けて言ってみましょう。</span>',
-    staticHints: ['relaxing','fun','busy','productive','exciting',
-                  'refreshing','peaceful','enjoyable','eventful','tiring','memorable'],
-    placeholder: 'e.g. relaxing / fun / peaceful',
-    multiline: false,
+// ── TEMPLATES ─────────────────────────────────────────
+const TEMPLATES = {
+  weekend: {
+    id: 'weekend',
+    name: 'Weekend Talk',
+    intro: 'こんにちは！🎉 週末の英語スピーチを一緒に作りましょう。',
+    opener: 'Let me tell you about my weekend.',
+    closer: 'Do you have any questions or comments?',
+    draftRows: [
+      { key: 'point',      label: 'P', color: '#4A90D9' },
+      { key: 'example',    label: 'E', color: '#E8960F' },
+      { key: 'conclusion', label: 'P', color: '#9B59B6' },
+    ],
+    prepTags: [
+      { label: 'P Point',      bg: '#EBF4FF', color: '#4A90D9' },
+      { label: 'R Reason',     bg: '#EDFAF1', color: '#5BAD6F' },
+      { label: 'E Example',    bg: '#FFF8EC', color: '#E8960F' },
+      { label: 'P Conclusion', bg: '#F7F0FF', color: '#9B59B6' },
+    ],
+    questions: [
+      {
+        id: 'adj', needsAI: false, lang: 'en-US',
+        sc: '#4A90D9', cl: '#BDD8F5', cbg: '#EBF4FF',
+        bot: '週末を一言で表すとどんな感じでしたか。<br><span style="font-size:13px;color:#999;font-weight:400">It was … に続けて言ってみましょう。</span>',
+        staticHints: ['relaxing','fun','busy','productive','exciting','refreshing','peaceful','enjoyable','eventful','tiring','memorable'],
+        placeholder: 'e.g. relaxing / fun / peaceful',
+        multiline: false,
+      },
+      {
+        id: 'reason', needsAI: true, lang: 'en-US',
+        sc: '#5BAD6F', cl: '#A8DAAF', cbg: '#EDFAF1',
+        bot: 'なぜそう思ったのか、理由を一言で言うと？',
+        staticHints: [],
+        placeholder: 'e.g. I was able to relax / I spent time with friends',
+        multiline: false,
+      },
+      {
+        id: 'example1', needsAI: true, lang: 'en-US',
+        sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
+        bot: '具体的なエピソードを二つ教えてください。',
+        staticHints: [],
+        placeholder: 'e.g. I had lunch with a friend on Saturday. On Sunday, I watched a movie at home.',
+        multiline: true,
+      },
+      {
+        id: 'feeling', needsAI: true, lang: 'en-US',
+        sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
+        bot: 'その時の感想を教えてください。',
+        staticHints: [],
+        placeholder: 'e.g. delicious / really relaxing / amazing',
+        multiline: false,
+      },
+      {
+        id: 'now', needsAI: true, lang: 'en-US',
+        sc: '#9B59B6', cl: '#C89FD6', cbg: '#F7F0FF',
+        bot: '新しい1週間をどんな気持ちで迎えていますか。',
+        staticHints: [],
+        placeholder: 'e.g. feeling refreshed / ready to take on the week',
+        multiline: false,
+      },
+    ],
   },
-  {
-    id: 'reason', needsAI: true, lang: 'en-US',
-    sc: '#5BAD6F', cl: '#A8DAAF', cbg: '#EDFAF1',
-    bot: 'なぜそう思ったのか、理由を一言で言うと？',
-    staticHints: [],
-    placeholder: 'e.g. I was able to relax / I spent time with friends',
-    multiline: false,
-  },
-  {
-    id: 'example1', needsAI: true, lang: 'en-US',
-    sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
-    bot: '具体的なエピソードを二つ教えてください。',
-    staticHints: [],
-    placeholder: 'e.g. I had lunch with a friend on Saturday. On Sunday, I watched a movie at home.',
-    multiline: true,
-  },
-  {
-    id: 'feeling', needsAI: true, lang: 'en-US',
-    sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
-    bot: 'その時の感想を教えてください。',
-    staticHints: [],
-    placeholder: 'e.g. delicious / really relaxing / amazing',
-    multiline: false,
-  },
-  {
-    id: 'now', needsAI: true, lang: 'en-US',
-    sc: '#9B59B6', cl: '#C89FD6', cbg: '#F7F0FF',
-    bot: '新しい1週間をどんな気持ちで迎えていますか。',
-    staticHints: [],
-    placeholder: 'e.g. feeling refreshed / ready to take on the week',
-    multiline: false,
-  },
-];
 
-// ── STATE ────────────────────────────────────────────
-const answers = {};
+  myFavorite: {
+    id: 'myFavorite',
+    name: 'My Favorite',
+    intro: 'こんにちは！❤️ お気に入りのものについて英語スピーチを作りましょう。',
+    opener: 'For today\'s topic, I chose "My favorite".',
+    closer: 'Do you have any questions or comments?',
+    draftRows: [
+      { key: 'point',      label: 'P', color: '#E74C8B' },
+      { key: 'reason',     label: 'R', color: '#5BAD6F' },
+      { key: 'example',    label: 'E', color: '#E8960F' },
+      { key: 'conclusion', label: 'P', color: '#9B59B6' },
+    ],
+    prepTags: [
+      { label: 'P Point',      bg: '#FFF0F7', color: '#E74C8B' },
+      { label: 'R Reason',     bg: '#EDFAF1', color: '#5BAD6F' },
+      { label: 'E Example',    bg: '#FFF8EC', color: '#E8960F' },
+      { label: 'P Conclusion', bg: '#F7F0FF', color: '#9B59B6' },
+    ],
+    questions: [
+      {
+        id: 'item', needsAI: false, lang: 'en-US',
+        sc: '#E74C8B', cl: '#F5A7C7', cbg: '#FFF0F7',
+        bot: '好きなジャンルと、具体的に何が好きか教えてください。<br><span style="font-size:13px;color:#999">e.g. music → jazz / books → mystery novels</span>',
+        staticHints: ['jazz music','mystery novels','cooking','soccer','photography','watercolor','hiking','coffee','anime','fashion','yoga'],
+        placeholder: 'e.g. jazz music / mystery novels / cooking',
+        multiline: false,
+      },
+      {
+        id: 'feeling', needsAI: true, lang: 'en-US',
+        sc: '#E74C8B', cl: '#F5A7C7', cbg: '#FFF0F7',
+        bot: 'それはあなたにどんな気持ちを与えますか？',
+        staticHints: [],
+        placeholder: 'e.g. relaxed / energized / happy / inspired',
+        multiline: false,
+      },
+      {
+        id: 'habit', needsAI: true, lang: 'en-US',
+        sc: '#9B59B6', cl: '#C89FD6', cbg: '#F7F0FF',
+        bot: 'いつ・だれと・どこで楽しみますか？',
+        staticHints: [],
+        placeholder: 'e.g. every weekend alone at home / with friends at a café',
+        multiline: false,
+      },
+      {
+        id: 'episode', needsAI: true, lang: 'en-US',
+        sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
+        bot: '具体的なエピソードを教えてください。<br><span style="font-size:13px;color:#999">いつのことで、何をしましたか？</span>',
+        staticHints: [],
+        placeholder: 'e.g. Last month, I went to a jazz concert in Osaka with my friend',
+        multiline: true,
+      },
+      {
+        id: 'impression', needsAI: true, lang: 'en-US',
+        sc: '#E8960F', cl: '#F5CC7F', cbg: '#FFF8EC',
+        bot: 'その時の感想は？',
+        staticHints: [],
+        placeholder: 'e.g. amazing / unforgettable / really inspiring',
+        multiline: false,
+      },
+      {
+        id: 'future', needsAI: true, lang: 'en-US',
+        sc: '#5BAD6F', cl: '#A8DAAF', cbg: '#EDFAF1',
+        bot: '将来やりたいことは？',
+        staticHints: [],
+        placeholder: 'e.g. learn to play guitar / visit a jazz festival in New York',
+        multiline: true,
+      },
+    ],
+  },
+};
+
+// ── STATE ─────────────────────────────────────────────
+let currentTemplate = null;
+let Qs = [];
 let curQ = 0;
 let pending = '';
-let followUpCount = 0;   // how many follow-ups asked for current question
-let partialAnswer = '';  // accumulated answer during follow-ups
+let followUpCount = 0;
+let partialAnswer = '';
+const answers = {};
 
-// ── BOOT ─────────────────────────────────────────────
+// ── START TEMPLATE ────────────────────────────────────
+async function startTemplate(id) {
+  currentTemplate = TEMPLATES[id];
+  Qs = currentTemplate.questions;
+
+  document.getElementById('homeScreen').style.display = 'none';
+  document.getElementById('hdr').style.display = '';
+  document.getElementById('chat').style.display = '';
+  document.getElementById('hdrTitle').textContent = currentTemplate.name;
+
+  // Warm-up ping
+  fetch('/api/chips', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ templateId: id, questionId: '_ping', answers: {} }),
+  }).catch(() => {});
+
+  await init();
+}
+
+// ── INIT ──────────────────────────────────────────────
 async function init() {
+  Object.keys(answers).forEach(k => delete answers[k]);
+  curQ = 0; pending = ''; followUpCount = 0; partialAnswer = '';
+
   buildDots();
   chatEl().innerHTML = '';
-  botMsg('こんにちは！🎉 週末の英語スピーチを一緒に作りましょう。<br>質問に答えながらスピーチを完成させていきます！');
-  fetch('/api/chips', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ questionId: '_ping', answers: {} }),
-  }).catch(() => {});
+
+  botMsg(currentTemplate.intro);
   await wait(600);
   botMsg('回答はすべて<strong>英語</strong>でお願いします！<br><span style="font-size:13px;color:#999">英語での言い方がわからなければ日本語でOK！<br>英語フレーズを提案するので、それを参考に英語で入力してね。</span>');
+
   setTimeout(() => nextQ(0), 900);
 }
 
-// ── DOTS ─────────────────────────────────────────────
+// ── DOTS ──────────────────────────────────────────────
 function buildDots() {
   const el = document.getElementById('dots');
   el.innerHTML = '';
@@ -375,7 +480,6 @@ function buildDots() {
   });
   refreshDots();
 }
-
 function refreshDots() {
   Qs.forEach((_, i) => {
     const d = document.getElementById(`dot${i}`);
@@ -386,7 +490,7 @@ function refreshDots() {
   });
 }
 
-// ── CHAT HELPERS ─────────────────────────────────────
+// ── CHAT HELPERS ──────────────────────────────────────
 function chatEl() { return document.getElementById('chat'); }
 
 function botMsg(html) {
@@ -396,7 +500,6 @@ function botMsg(html) {
   chatEl().appendChild(wrap);
   scrollEnd();
 }
-
 function userMsg(text) {
   const q = Qs[Math.min(curQ, Qs.length - 1)];
   const wrap = document.createElement('div');
@@ -406,7 +509,6 @@ function userMsg(text) {
   chatEl().appendChild(wrap);
   scrollEnd();
 }
-
 function showTyping() {
   const el = document.createElement('div');
   el.className = 'typing-wrap'; el.id = 'typing';
@@ -420,11 +522,9 @@ function showTyping() {
 async function nextQ(idx) {
   curQ = idx;
   refreshDots();
-
   const q = Qs[idx];
   if (!q) { await generateSpeech(); return; }
 
-  // Show question immediately (no waiting for AI)
   const t = showTyping();
   await wait(380);
   t.remove();
@@ -433,21 +533,18 @@ async function nextQ(idx) {
   appendInput(q);
   scrollEnd();
 
-  // Fetch AI hints in background for needsAI questions
   if (q.needsAI) fetchHintsInBackground(q);
 }
 
 async function fetchHintsInBackground(q) {
   try {
     const r = await fetch('/api/chips', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionId: q.id, answers }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateId: currentTemplate.id, questionId: q.id, answers }),
     });
     if (!r.ok) return;
     const data = await r.json();
     const chips = Array.isArray(data.chips) ? data.chips : [];
-    // Update hints block if input is still visible
     const block = document.getElementById('hintsBlock');
     if (block && chips.length) renderHints(block, chips);
   } catch { /* fail silently */ }
@@ -458,20 +555,15 @@ function appendInput(q, translationHints = null) {
   const wrap = document.createElement('div');
   wrap.className = 'q-input'; wrap.id = 'qInput';
   wrap.style.setProperty('--sc', q.sc);
-  wrap.style.setProperty('--cl', q.cl);
-  wrap.style.setProperty('--cbg', q.cbg);
 
-  // ── text input ──
   const inp = q.multiline
     ? Object.assign(document.createElement('textarea'), { rows: 3 })
     : Object.assign(document.createElement('input'), { type: 'text' });
   inp.className = 'txt-inp';
   inp.placeholder = q.placeholder;
 
-  // ── voice button ──
   const voiceBtn = makeVoiceBtn(inp, q);
 
-  // ── send button ──
   const sendBtn = document.createElement('button');
   sendBtn.className = 'send-btn';
   sendBtn.textContent = '送る →';
@@ -488,15 +580,13 @@ function appendInput(q, translationHints = null) {
   row.appendChild(sendBtn);
   wrap.appendChild(row);
 
-  // ── hints area (below input) ──
   const hintsBlock = document.createElement('div');
-  hintsBlock.className = 'hints-block';
-  hintsBlock.id = 'hintsBlock';
+  hintsBlock.className = 'hints-block'; hintsBlock.id = 'hintsBlock';
 
   if (translationHints && translationHints !== 'none' && translationHints.length) {
     renderTranslations(hintsBlock, translationHints);
   } else if (translationHints === 'none') {
-    hintsBlock.style.display = 'none'; // hide during follow-up
+    hintsBlock.style.display = 'none';
   } else if (!q.needsAI && q.staticHints.length) {
     renderHints(hintsBlock, q.staticHints);
   } else if (q.needsAI) {
@@ -505,7 +595,6 @@ function appendInput(q, translationHints = null) {
   wrap.appendChild(hintsBlock);
   chatEl().appendChild(wrap);
 
-  // ── events ──
   pending = '';
   inp.addEventListener('input', () => {
     pending = inp.value.trim();
@@ -522,44 +611,39 @@ function appendInput(q, translationHints = null) {
 }
 
 function renderHints(container, items) {
-  container.innerHTML = `
-    <div class="hints-label">参考例</div>
-    <div class="hints-list">
-      ${items.map(w => `<span class="hint-item">${esc(w)}</span>`).join('')}
-    </div>`;
+  container.innerHTML = `<div class="hints-label">参考例</div>
+    <div class="hints-list">${items.map(w => `<span class="hint-item">${esc(w)}</span>`).join('')}</div>`;
+}
+function renderTranslations(container, items) {
+  container.innerHTML = `<div class="hints-label" style="color:#5BAD6F">英語フレーズ例</div>
+    <div class="hints-list">${items.map(w => `<span class="hint-item" style="background:#EDFAF1;color:#5BAD6F">${esc(w)}</span>`).join('')}</div>`;
 }
 
 // ── VOICE ─────────────────────────────────────────────
 function makeVoiceBtn(inp, q) {
   const btn = document.createElement('button');
-  btn.className = 'voice-btn';
-  btn.type = 'button';
-  btn.title = '音声入力';
-  btn.textContent = '🎤';
+  btn.className = 'voice-btn'; btn.type = 'button';
+  btn.title = '音声入力'; btn.textContent = '🎤';
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { btn.style.display = 'none'; return btn; }
 
   const rec = new SR();
-  rec.lang = q.lang || 'ja-JP';
-  rec.continuous = false;
-  rec.interimResults = false;
+  rec.lang = q.lang || 'en-US';
+  rec.continuous = false; rec.interimResults = false;
 
   rec.onstart  = () => btn.classList.add('on');
   rec.onend    = () => btn.classList.remove('on');
   rec.onerror  = () => btn.classList.remove('on');
   rec.onresult = e => {
     const t = e.results[0][0].transcript;
-    inp.value = t;
-    pending = t;
+    inp.value = t; pending = t;
     document.querySelector('.send-btn').disabled = false;
     if (q.multiline) autoHeight(inp);
   };
-
   btn.addEventListener('click', () => {
     btn.classList.contains('on') ? rec.stop() : rec.start();
   });
-
   return btn;
 }
 
@@ -570,29 +654,23 @@ function isJapanese(text) {
 
 async function handleJapanese(val) {
   const q = Qs[curQ];
-
-  // Remove current input card first
   document.getElementById('qInput')?.remove();
   pending = '';
 
-  // Show Japanese as a "draft" bubble (gray, not final)
   const wrap = document.createElement('div');
   wrap.className = 'msg user';
-  wrap.innerHTML = `
-    <div style="text-align:right">
-      <div class="bubble user ja-draft">${esc(val)}</div>
-      <div class="ja-note">日本語を検出 → 英語フレーズを提案します</div>
-    </div>`;
+  wrap.innerHTML = `<div style="text-align:right">
+    <div class="bubble user ja-draft">${esc(val)}</div>
+    <div class="ja-note">日本語を検出 → 英語フレーズを提案します</div>
+  </div>`;
   chatEl().appendChild(wrap);
   scrollEnd();
 
-  // Fetch translation from server
   const t = showTyping();
   let suggestions = [];
   try {
     const r = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: val }),
     });
     const data = r.ok ? await r.json() : { suggestions: [] };
@@ -600,46 +678,24 @@ async function handleJapanese(val) {
   } catch { /* fail silently */ }
 
   t.remove();
-
-  if (suggestions.length) {
-    botMsg('英語ではこんな言い方ができますよ 😊<br><span style="font-size:13px;color:#999">参考にして、英語で入力してみてね！</span>');
-  } else {
-    botMsg('英語で入力してみてください 😊');
-  }
-
-  // Re-show input card with translation suggestions as hints
+  botMsg(suggestions.length
+    ? '英語ではこんな言い方ができますよ 😊<br><span style="font-size:13px;color:#999">参考にして、英語で入力してみてね！</span>'
+    : '英語で入力してみてください 😊');
   appendInput(q, suggestions.length ? suggestions : null);
-}
-
-function renderTranslations(container, items) {
-  container.innerHTML = `
-    <div class="hints-label" style="color:#5BAD6F">英語フレーズ例</div>
-    <div class="hints-list">
-      ${items.map(w => `<span class="hint-item" style="background:#EDFAF1;color:#5BAD6F">${esc(w)}</span>`).join('')}
-    </div>`;
 }
 
 // ── SUBMIT ────────────────────────────────────────────
 async function submit() {
   if (!pending) return;
   const val = pending.trim();
+  if (isJapanese(val)) { await handleJapanese(val); return; }
 
-  if (isJapanese(val)) {
-    await handleJapanese(val);
-    return;
-  }
-
-  // Accumulate with any previous partial answer
   const accumulated = partialAnswer ? `${partialAnswer}. ${val}` : val;
-
   document.getElementById('qInput')?.remove();
   userMsg(val);
 
-  // Q1 (adj) needs no follow-up — just move on
-  if (Qs[curQ].id === 'adj') {
-    saveAndNext(accumulated);
-    return;
-  }
+  // Q with needsAI:false (adj, item) never need follow-up
+  if (!Qs[curQ].needsAI) { saveAndNext(accumulated); return; }
 
   await checkAndProceed(accumulated);
 }
@@ -649,9 +705,9 @@ async function checkAndProceed(accumulated) {
   const t = showTyping();
   try {
     const r = await fetch('/api/followup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        templateId: currentTemplate.id,
         questionId: q.id,
         answer: accumulated,
         answers,
@@ -662,24 +718,22 @@ async function checkAndProceed(accumulated) {
     t.remove();
 
     if (!data.sufficient && data.question) {
-      // Ask a follow-up question
       partialAnswer = accumulated;
       followUpCount++;
       botMsg(data.question);
-      appendInput(q, 'none'); // no hints during follow-up
+      appendInput(q, 'none');
     } else {
       saveAndNext(accumulated);
     }
   } catch {
     t.remove();
-    saveAndNext(accumulated); // fail gracefully
+    saveAndNext(accumulated);
   }
 }
 
 function saveAndNext(answer) {
   answers[Qs[curQ].id] = answer;
-  partialAnswer = '';
-  followUpCount = 0;
+  partialAnswer = ''; followUpCount = 0;
   nextQ(curQ + 1);
 }
 
@@ -688,16 +742,14 @@ async function generateSpeech() {
   const t = showTyping();
   try {
     const r = await fetch('/api/speech', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answers }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateId: currentTemplate.id, answers }),
     });
     if (!r.ok) throw new Error();
     const data = await r.json();
     t.remove();
     botMsg('ありがとうございます！✨ ドラフトを作成しました。');
 
-    // Show AI inference notes if any
     if (Array.isArray(data.notes) && data.notes.length) {
       await wait(500);
       const list = data.notes.map(n => `・${esc(n)}`).join('<br>');
@@ -715,22 +767,15 @@ async function generateSpeech() {
 function appendErrorWithRetry() {
   const wrap = document.createElement('div');
   wrap.className = 'msg bot'; wrap.id = 'errorMsg';
-  wrap.innerHTML = `
-    ${AVATAR}
-    <div class="bubble bot">
-      サーバーが応答しませんでした 🙏<br>
-      <small style="color:#bbb">（初回は起動に少し時間がかかることがあります）</small><br><br>
-      <button onclick="retryGenerate()" style="
-        padding:8px 18px;border-radius:8px;border:none;
-        background:#667eea;color:white;font-size:13px;
-        font-weight:700;cursor:pointer;font-family:inherit;">
-        もう一度試す →
-      </button>
-    </div>`;
-  chatEl().appendChild(wrap);
-  scrollEnd();
+  wrap.innerHTML = `${AVATAR}<div class="bubble bot">
+    サーバーが応答しませんでした 🙏<br>
+    <small style="color:#bbb">（初回は起動に少し時間がかかることがあります）</small><br><br>
+    <button onclick="retryGenerate()" style="padding:8px 18px;border-radius:8px;border:none;
+      background:#667eea;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+      もう一度試す →
+    </button></div>`;
+  chatEl().appendChild(wrap); scrollEnd();
 }
-
 async function retryGenerate() {
   document.getElementById('errorMsg')?.remove();
   await generateSpeech();
@@ -738,13 +783,21 @@ async function retryGenerate() {
 
 // ── DRAFT ─────────────────────────────────────────────
 function buildDraft(sections) {
+  const t = currentTemplate;
+
+  // Prep tags
+  const tagsEl = document.getElementById('prepTags');
+  tagsEl.innerHTML = t.prepTags.map(p =>
+    `<span class="ptag" style="background:${p.bg};color:${p.color}">${p.label}</span>`
+  ).join('');
+
+  // Draft rows
   const rows = [
-    { label: '',  color: '#ddd',     text: 'Let me tell you about my weekend.' },
-    { label: 'P', color: '#4A90D9',  text: sections.point      || '' },
-    { label: 'E', color: '#E8960F',  text: sections.example    || '' },
-    { label: 'P', color: '#9B59B6',  text: sections.conclusion || '' },
-    { label: '',  color: '#ddd',     text: 'Do you have any questions or comments?' },
+    { label: '', color: '#ddd', text: t.opener },
+    ...t.draftRows.map(r => ({ label: r.label, color: r.color, text: sections[r.key] || '' })),
+    { label: '', color: '#ddd', text: t.closer },
   ];
+
   const box = document.getElementById('draftBox');
   box.innerHTML = '';
   rows.forEach(row => {
@@ -758,25 +811,50 @@ function buildDraft(sections) {
     box.appendChild(sec);
     requestAnimationFrame(() => autoHeight(ta));
   });
+
   document.getElementById('draftDivider').classList.add('show');
   document.getElementById('draftScreen').classList.add('show');
   document.getElementById('draftScreen').scrollIntoView({ behavior: 'smooth' });
 }
 
+// ── SPEAK ─────────────────────────────────────────────
+function speakDraft() {
+  const synth = window.speechSynthesis;
+  const btn = document.getElementById('speakBtn');
+  if (synth.speaking) {
+    synth.cancel();
+    btn.textContent = '🔊 スピーチを読み上げる';
+    btn.classList.remove('speaking');
+    return;
+  }
+  const parts = [];
+  document.querySelectorAll('.dsec-text').forEach(ta => { const v = ta.value.trim(); if (v) parts.push(v); });
+  if (!parts.length) return;
+
+  const utt = new SpeechSynthesisUtterance(parts.join(' '));
+  utt.lang = 'en-US'; utt.rate = 0.88; utt.pitch = 1;
+  const voices = synth.getVoices();
+  const enVoice = voices.find(v => v.lang.startsWith('en') && !v.localService) || voices.find(v => v.lang.startsWith('en'));
+  if (enVoice) utt.voice = enVoice;
+
+  btn.textContent = '⏹ 読み上げ中… (タップで停止)';
+  btn.classList.add('speaking');
+  const reset = () => { btn.textContent = '🔊 スピーチを読み上げる'; btn.classList.remove('speaking'); };
+  utt.onend = reset; utt.onerror = reset;
+  synth.speak(utt);
+}
+
 // ── COPY ──────────────────────────────────────────────
 function doCopy() {
   const parts = [];
-  document.querySelectorAll('.dsec-text').forEach(ta => {
-    const v = ta.value.trim(); if (v) parts.push(v);
-  });
+  document.querySelectorAll('.dsec-text').forEach(ta => { const v = ta.value.trim(); if (v) parts.push(v); });
   const text = parts.join('\n\n');
   navigator.clipboard
     ? navigator.clipboard.writeText(text).then(showToast).catch(() => fbCopy(text))
     : fbCopy(text);
 }
 function fbCopy(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
+  const ta = document.createElement('textarea'); ta.value = text;
   Object.assign(ta.style, { position:'fixed', opacity:'0', top:'0', left:'0' });
   document.body.appendChild(ta); ta.focus(); ta.select();
   document.execCommand('copy'); document.body.removeChild(ta); showToast();
@@ -787,78 +865,25 @@ function showToast() {
   setTimeout(() => el.classList.remove('show'), 2000);
 }
 
-// ── SPEAK ─────────────────────────────────────────────
-function speakDraft() {
-  const synth = window.speechSynthesis;
-  const btn   = document.getElementById('speakBtn');
-
-  if (synth.speaking) {
-    synth.cancel();
-    btn.textContent = '🔊 スピーチを読み上げる';
-    btn.classList.remove('speaking');
-    return;
-  }
-
-  const parts = [];
-  document.querySelectorAll('.dsec-text').forEach(ta => {
-    const v = ta.value.trim(); if (v) parts.push(v);
-  });
-  if (!parts.length) return;
-
-  const utt = new SpeechSynthesisUtterance(parts.join(' '));
-  utt.lang  = 'en-US';
-  utt.rate  = 0.88;
-  utt.pitch = 1;
-
-  // Prefer a natural-sounding English voice if available
-  const voices = synth.getVoices();
-  const enVoice = voices.find(v => v.lang.startsWith('en') && !v.localService)
-                || voices.find(v => v.lang.startsWith('en'));
-  if (enVoice) utt.voice = enVoice;
-
-  btn.textContent = '⏹ 読み上げ中… (タップで停止)';
-  btn.classList.add('speaking');
-
-  const reset = () => {
-    btn.textContent = '🔊 スピーチを読み上げる';
-    btn.classList.remove('speaking');
-  };
-  utt.onend  = reset;
-  utt.onerror = reset;
-
-  synth.speak(utt);
-}
-
 // ── RESTART ───────────────────────────────────────────
 function restart() {
   window.speechSynthesis?.cancel();
-  Object.keys(answers).forEach(k => delete answers[k]);
-  curQ = 0; pending = '';
-  followUpCount = 0; partialAnswer = '';
   document.getElementById('draftScreen').classList.remove('show');
   document.getElementById('draftDivider').classList.remove('show');
+  document.getElementById('hdr').style.display = 'none';
+  document.getElementById('chat').style.display = 'none';
+  chatEl().innerHTML = '';
+  document.getElementById('homeScreen').style.display = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  init();
 }
 
-function scrollToChat() {
-  chatEl().scrollIntoView({ behavior: 'smooth' });
-}
+function scrollToChat() { chatEl().scrollIntoView({ behavior: 'smooth' }); }
 
 // ── UTILS ─────────────────────────────────────────────
-function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function scrollEnd() {
-  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-}
-function autoHeight(el) {
-  el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px';
-}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function scrollEnd() { window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); }
+function autoHeight(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// ── BOOT ──────────────────────────────────────────────
-init();
 </script>
 </body>
 </html>
